@@ -1,0 +1,48 @@
+{
+  "name": "jb-sw-integrated-info",
+  "version": "1.0.0",
+  "description": "AI 기반 전북권 대학 및 SW 사업단 통합 정보 플랫폼 (Expo) 프로토타입.",
+  "main": "expo-router/entry",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "expo start -c",
+    "start": "expo start",
+    "ios": "expo run:ios",
+    "android": "expo run:android"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "private": "true",
+  "dependencies": {
+    "@expo/metro-runtime": "~6.1.2",
+    "@expo/vector-icons": "^15.0.2",
+    "@tanstack/react-query": "^5.90.1",
+    "axios": "^1.12.2",
+    "date-fns": "^4.1.0",
+    "expo": "^54.0.9",
+    "expo-constants": "~18.0.9",
+    "expo-device": "~8.0.8",
+    "expo-font": "~14.0.8",
+    "expo-linking": "~8.0.8",
+    "expo-notifications": "~0.32.11",
+    "expo-router": "~6.0.7",
+    "expo-secure-store": "~15.0.7",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.4",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.0",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-web": "^0.21.0",
+    "react-native-worklets": "0.5.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.10",
+    "babel-preset-expo": "~54.0.0",
+    "typescript": "~5.9.2"
+  },
+  "packageManager": "pnpm@9.9.0+sha512.60c18acd138bff695d339be6ad13f7e936eea6745660d4cc4a776d5247c540d0edee1a563695c183a66eb917ef88f2b4feb1fc25f32a7adcadc7aaf3438e99c1"
+}
