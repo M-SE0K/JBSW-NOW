@@ -9,6 +9,14 @@ AI 기반 전북권 대학 및 SW 사업단 통합 정보 플랫폼 (Expo) 프�
 - **CocoaPods (iOS 네이티브 빌드 시)**: `sudo gem install cocoapods`
 - **Android Studio (Android 개발 시)**: SDK, 에뮬레이터, Java 17 설정
 
+## 권민석의 역작 스크립트
+```bash
+git clone <REPO_URL>
+cd <REPO_DIR>
+npm run setup
+```
+
+
 ### 클론 후 초기 설정
 1) 저장소 클론
 ```bash
