@@ -17,7 +17,7 @@ AI 기반 전북권 대학 및 SW 사업단 통합 정보 플랫폼 (Expo) 프�
 4) 빌드 실행:
    - iOS: `eas build --platform ios`
    - Android: `eas build --platform android`
-
+### 쳐다보는데? 
 ### 간단 API 계약
 - GET `/events?q&orgId&cursor` → `{ data: Event[], nextCursor }`
 - GET `/events/:id` → `Event`
