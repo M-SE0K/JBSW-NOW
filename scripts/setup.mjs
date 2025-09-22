@@ -1,0 +1,68 @@
+#!/usr/bin/env node
+import { existsSync } from 'node:fs';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { execSync, spawnSync } from 'node:child_process';
+
+function run(cmd, options = {}) {
+  console.log(`\n> ${cmd}`);
+  execSync(cmd, { stdio: 'inherit', ...options });
+}
+
+async function main() {
+  const projectRoot = process.cwd();
+
+  // 1) Lock 파일 정리 (npm 사용 고정)
+  for (const lock of ['pnpm-lock.yaml', 'yarn.lock']) {
+    const p = path.join(projectRoot, lock);
+    if (existsSync(p)) {
+      await fs.rm(p, { force: true });
+      console.log(`Removed ${lock}`);
+    }
+  }
+
+  // 2) 의존성 설치 (lock이 있으면 ci, 없으면 install)
+  if (existsSync(path.join(projectRoot, 'package-lock.json'))) {
+    run('npm ci');
+  } else {
+    run('npm install');
+  }
+
+  // 3) .env 생성 (없으면)
+  const envPath = path.join(projectRoot, '.env');
+  if (!existsSync(envPath)) {
+    const content = 'EXPO_PUBLIC_API_BASE_URL=\n';
+    await fs.writeFile(envPath, content, 'utf8');
+    console.log('Created .env');
+  }
+
+  // 4) Watchman 재인덱싱 (macOS + watchman 존재 시)
+  const isMac = process.platform === 'darwin';
+  const hasWatchman = spawnSync('which', ['watchman']).status === 0;
+  if (isMac && hasWatchman) {
+    try {
+      const parent = path.dirname(projectRoot);
+      run(`watchman watch-del '${parent}' || true`);
+      run(`watchman watch-project '${parent}'`);
+    } catch {}
+  }
+
+  // 5) expo-doctor로 상태 점검 (있으면 진행)
+  try {
+    run('npx --yes expo-doctor');
+  } catch {
+    console.warn('\nexpo-doctor reported issues. You can rerun it later.');
+  }
+
+  console.log('\n✅ Setup complete. Next:');
+  console.log('- Start dev server: npx expo start -c');
+  console.log('- iOS: npx expo run:ios');
+  console.log('- Android: npx expo run:android');
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+
+
