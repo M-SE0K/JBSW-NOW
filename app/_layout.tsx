@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
-import { Tabs } from "expo-router";
-import { useColorScheme, View } from "react-native";
+import { Tabs, Link } from "expo-router";
+import { useColorScheme, View, Pressable, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryProvider } from "../src/state/queryClient";
@@ -25,72 +25,83 @@ export default function RootLayout() {
               tabBarStyle: { backgroundColor: colorScheme === "dark" ? "#111" : "#fff" },
             }}
           >
+            /* 헤더 영역 */
             <Tabs.Screen
               name="index"
               options={{
-                title: "홈",
+                title: "",
                 tabBarIcon: ({ color, size }) => (
                   <Ionicons name="home-outline" color={color} size={size} />
                 ),
-                headerTitle: "요약 피드",
+                headerTitle: () => {
+                  const headerColor = colorScheme === "dark" ? "#fff" : "#125";
+                  return (
+                    <Text style={[HEADER_TITLE_BASE_STYLE, { color: headerColor }]} numberOfLines={1}>
+                      {HEADER_TITLE_TEXT}
+                    </Text>
+                  );
+                },
+                headerTitleAlign: "left",
+                headerRight: () => {
+                  const iconColor = colorScheme === "dark" ? "#fff" : "#111";
+                  return (
+                    <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}>
+                      <Link href="/search" asChild>
+                        <Pressable accessibilityLabel="search">
+                          <Ionicons name="search-outline" color={iconColor} size={24} />
+                        </Pressable>
+                      </Link>
+                      <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
+                        <Ionicons name="notifications-outline" color={iconColor} size={24} />
+                      </Pressable>
+                      <Pressable accessibilityLabel="menu" style={{ marginLeft: 18 }}>
+                        <Ionicons name="menu-outline" color={iconColor} size={24} />
+                      </Pressable>
+                    </View>
+                  );
+                },
               }}
             />
-            <Tabs.Screen
-              name="events/index"
-              options={{
-                title: "행사",
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="calendar-outline" color={color} size={size} />
-                ),
-                headerTitle: "행사 목록",
-              }}
-            />
-            <Tabs.Screen
-              name="orgs/index"
-              options={{
-                title: "기관",
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="business-outline" color={color} size={size} />
-                ),
-                headerTitle: "기관 목록",
-              }}
-            />
+            
+            /* 즐겨찾기 */
             <Tabs.Screen
               name="search/index"
               options={{
-                title: "검색",
+                title: "",
                 tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="search-outline" color={color} size={size} />
+                  <Ionicons name="bookmark-outline" color={color} size={size} />
                 ),
-                headerTitle: "통합 검색",
+                headerTitle: "",
+                headerLeft: () => {
+                  const iconColor = colorScheme === "dark" ? "#fff" : "#111";
+                  return (
+                    <Link href="/" asChild>
+                      <Pressable accessibilityLabel="go back" style={{ paddingRight: 8 }}>
+                        <Ionicons name="chevron-back" color={iconColor} size={24} />
+                      </Pressable>
+                    </Link>
+                  );
+                },
               }}
             />
-            <Tabs.Screen
-              name="chat/index"
-              options={{
-                title: "챗봇",
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="chatbubble-ellipses-outline" color={color} size={size} />
-                ),
-                headerTitle: "AI 챗봇",
-              }}
-            />
+
+            /* 인기 게시물 */
             <Tabs.Screen
               name="settings/index"
               options={{
-                title: "설정",
+                title: "",
                 tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="settings-outline" color={color} size={size} />
+                  <Ionicons name="flame-outline" color={color} size={size} />
                 ),
-                headerTitle: "설정",
+                headerTitle: "",
               }}
             />
-            {/* 모달 라우트: 탭 외부에서 push로 열리며, 화면 자체에서 모달 스타일 처리 */}
-            <Tabs.Screen
-              name="(modals)/filters"
-              options={{ href: null }}
-            />
+            {/* 탭은 3개만 노출: 나머지 라우트는 탭 바에서 숨김 */}
+            <Tabs.Screen name="(modals)/filters" options={{ href: null }} />
+            <Tabs.Screen name="chat/index" options={{ href: null }} />
+            <Tabs.Screen name="events/index" options={{ href: null }} />
             <Tabs.Screen name="events/[id]" options={{ href: null }} />
+            <Tabs.Screen name="orgs/index" options={{ href: null }} />
             <Tabs.Screen name="orgs/[orgId]" options={{ href: null }} />
           </Tabs>
         </QueryProvider>
@@ -99,4 +110,11 @@ export default function RootLayout() {
   );
 }
 
+
+/* 헤더 타이틀 커스터마이즈를 위한 기본 스타일과 텍스트 상수 */
+const HEADER_TITLE_TEXT = "JBSW NOW";
+const HEADER_TITLE_BASE_STYLE = {
+  fontSize: 24,
+  fontWeight: "800" as const,
+};
 

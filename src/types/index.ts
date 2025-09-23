@@ -37,4 +37,24 @@ export type ChatAskResponse = {
   citations?: string[];
 };
 
+// Gemini 추출 JSON 스키마(포스터 분석용, 필드 일부만 선택)
+export type ContestFromImage = {
+  title?: string;
+  summary?: string;
+  eventStart?: string; // ISO YYYY-MM-DD
+  eventEnd?: string;   // ISO YYYY-MM-DD
+  applyStart?: string; // ISO
+  applyEnd?: string;   // ISO
+  location?: string;
+  prize?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  links?: string[];    // 신청 링크 등
+};
+
+export type GeminiAnalysisResult = {
+  rawText: string;           // 모델이 생성한 원문 텍스트
+  extracted?: ContestFromImage; // JSON 파싱이 성공했다면 구조화 결과
+};
+
 
