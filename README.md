@@ -15,7 +15,7 @@ git clone <REPO_URL>
 cd <REPO_DIR>
 npm run setup
 ```
-
+## dottery 왔쪄욤
 
 ### 클론 후 초기 설정
 1) 저장소 클론
