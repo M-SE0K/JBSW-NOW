@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, ScrollView, TextInput } from "react-native";
-import { analyzePosterImageFromBundledAsset, analyzePosterText, analyzePosterImage } from "../../src/api/gemini";
+import { analyzePosterImageFromBundledAsset } from "../../src/api/gemini/testGemini";
+import { analyzePosterText, analyzePosterImage } from "../../src/api/gemini/gemini";
+import { submitTextFromTestPage } from "../../src/services/submitFromTest";
 
 export default function LocalImageTestPage() {
   const [loading, setLoading] = useState(false);
@@ -53,6 +55,7 @@ export default function LocalImageTestPage() {
             setJsonPreview("");
             try {
               const res = await analyzePosterImage({ uri: imageUrl });
+              //const res = await analyzePosterImage({ uri:  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1757898366_BNsG0oAzTP6bx3hmPzNuT8kxzBmsLHA5Ju7x9pS2P68c7667e.jpg"});
               setRawText(res.rawText ?? "");
               if (res.extracted) setJsonPreview(JSON.stringify(res.extracted, null, 2));
             } catch (e: any) {
@@ -83,9 +86,10 @@ export default function LocalImageTestPage() {
             setRawText("");
             setJsonPreview("");
             try {
-              const res = await analyzePosterText({ text: textInput });
-              setRawText(res.rawText ?? "");
-              if (res.extracted) setJsonPreview(JSON.stringify(res.extracted, null, 2));
+              // 분석 + 저장까지 수행
+              const { analysis } = await submitTextFromTestPage({ text: textInput });
+              setRawText(analysis.rawText ?? "");
+              if (analysis.extracted) setJsonPreview(JSON.stringify(analysis.extracted, null, 2));
             } catch (e: any) {
               setError(String(e?.message ?? e));
             } finally {
@@ -95,7 +99,7 @@ export default function LocalImageTestPage() {
           disabled={loading}
           style={{ marginTop: 12, padding: 12, backgroundColor: loading ? "#ccc" : "#def", borderRadius: 8 }}
         >
-          <Text>{loading ? "분석 중..." : "텍스트로 분석"}</Text>
+          <Text>{loading ? "분석 중..." : "텍스트로 분석(저장 포함)"}</Text>
         </Pressable>
       </View>
       {!!rawText && (
