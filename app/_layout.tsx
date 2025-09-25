@@ -110,6 +110,9 @@ export default function RootLayout() {
                 headerShown: false 
               }} 
             />
+            {/* 테스트 라우트(탭 비노출) */}
+            <Tabs.Screen name="test/local-image" options={{ href: null }} />
+            <Tabs.Screen name="test/firebase" options={{ href: null }} />
           </Tabs>
         </QueryProvider>
       </SafeAreaProvider>
