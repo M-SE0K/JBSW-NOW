@@ -49,7 +49,7 @@ JSON 스키마 예시:
   // TEXT/JSON 분리 파싱
   let rawText = text.trim();
   let extracted: ContestFromImage | undefined;
-  const jsonStart = rawText.indexOf("\n{\");
+  const jsonStart = rawText.indexOf("\n{");
   if (jsonStart >= 0) {
     const maybeJson = rawText.slice(jsonStart);
     try {
