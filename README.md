@@ -1,6 +1,8 @@
 ### 프로젝트 개요
 AI 기반 전북권 대학 및 SW 사업단 통합 정보 플랫폼 (Expo) 프로토타입.
 
+## unji
+
 ### 개발 환경 요구사항 (필수)
 - **Node.js**: 18 LTS 또는 20 LTS 권장 (nvm 사용 추천)
 - **npm**: 프로젝트는 npm 표준 사용 (package-lock.json 유지)
