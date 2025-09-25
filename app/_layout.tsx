@@ -65,7 +65,7 @@ export default function RootLayout() {
             
             /* 즐겨찾기 */
             <Tabs.Screen
-              name="search/index"
+              name="favorites/index"
               options={{
                 title: "",
                 tabBarIcon: ({ color, size }) => (
@@ -103,6 +103,13 @@ export default function RootLayout() {
             <Tabs.Screen name="events/[id]" options={{ href: null }} />
             <Tabs.Screen name="orgs/index" options={{ href: null }} />
             <Tabs.Screen name="orgs/[orgId]" options={{ href: null }} />
+            <Tabs.Screen 
+              name="search/index" 
+              options={{ 
+                href: null,
+                headerShown: false 
+              }} 
+            />
           </Tabs>
         </QueryProvider>
       </SafeAreaProvider>
