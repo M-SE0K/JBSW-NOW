@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
 import { Tabs, Link } from "expo-router";
-import { useColorScheme, View, Pressable, Text } from "react-native";
+import { useColorScheme, Text, View, Pressable } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryProvider } from "../src/state/queryClient";
 import { setupAppFocus } from "../src/state/queryClient";
 import { Ionicons } from "@expo/vector-icons";
+import { AppHeaderRight, AppHeaderTitle } from "../src/components/AppHeader";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -32,6 +33,42 @@ export default function RootLayout() {
                 title: "",
                 tabBarIcon: ({ color, size }) => (
                   <Ionicons name="home-outline" color={color} size={size} />
+                ),
+                headerTitle: () => (
+                  <AppHeaderTitle color={colorScheme === "dark" ? "#fff" : "#125"} />
+                ),
+                headerTitleAlign: "left",
+                headerRight: () => (
+                  <AppHeaderRight iconColor={colorScheme === "dark" ? "#fff" : "#111"} />
+                ),
+              }}
+            />
+            
+            /* 즐겨찾기 */
+            <Tabs.Screen
+              name="favorites/index"
+              options={{
+                title: "",
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="bookmark-outline" color={color} size={size} />
+                ),
+                headerTitle: () => (
+                  <AppHeaderTitle color={colorScheme === "dark" ? "#fff" : "#125"} />
+                ),
+                headerTitleAlign: "left",
+                headerRight: () => (
+                  <AppHeaderRight iconColor={colorScheme === "dark" ? "#fff" : "#111"} />
+                ),
+              }}
+            />
+
+            /* 인기 게시물 */
+            <Tabs.Screen
+              name="hot/index"
+              options={{
+                title: "",
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="flame-outline" color={color} size={size} />
                 ),
                 headerTitle: () => {
                   const headerColor = colorScheme === "dark" ? "#fff" : "#125";
@@ -60,40 +97,6 @@ export default function RootLayout() {
                     </View>
                   );
                 },
-              }}
-            />
-            
-            /* 즐겨찾기 */
-            <Tabs.Screen
-              name="favorites/index"
-              options={{
-                title: "",
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="bookmark-outline" color={color} size={size} />
-                ),
-                headerTitle: "",
-                headerLeft: () => {
-                  const iconColor = colorScheme === "dark" ? "#fff" : "#111";
-                  return (
-                    <Link href="/" asChild>
-                      <Pressable accessibilityLabel="go back" style={{ paddingRight: 8 }}>
-                        <Ionicons name="chevron-back" color={iconColor} size={24} />
-                      </Pressable>
-                    </Link>
-                  );
-                },
-              }}
-            />
-
-            /* 인기 게시물 */
-            <Tabs.Screen
-              name="settings/index"
-              options={{
-                title: "",
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="flame-outline" color={color} size={size} />
-                ),
-                headerTitle: "",
               }}
             />
             {/* 탭은 3개만 노출: 나머지 라우트는 탭 바에서 숨김 */}
