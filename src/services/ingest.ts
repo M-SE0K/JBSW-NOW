@@ -77,6 +77,7 @@ async function saveToFirestore(params: {
   analysis: GeminiAnalysisResult;
   tags: string[];
   org: Org;
+  posterImageUrl?: string | null;
 }): Promise<string> {
   const db = getFirestore();
   const ex: ContestFromImage | undefined = params.analysis.extracted;
@@ -92,6 +93,7 @@ async function saveToFirestore(params: {
     summary,
     startAt,
     endAt,
+    posterImageUrl: params.posterImageUrl ?? null,
     location: ex?.location ?? null,
     prize: ex?.prize ?? null,
     contactEmail: ex?.contactEmail ?? null,

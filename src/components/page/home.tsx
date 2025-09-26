@@ -1,6 +1,7 @@
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, ScrollView, useColorScheme } from "react-native";
+import BannerSlider from "../BannerSlider";
 
 export default function Home() {
   const colorScheme = useColorScheme();
@@ -15,23 +16,14 @@ export default function Home() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: 24 }}
       >
         {/* 상단 배너 영역 */}
-        <View style={{ height: 200, borderRadius: 14, backgroundColor: placeholder, marginTop: 12,overflow: "hidden" }} />
-
-        {/* 페이지네이션 점 표시 */}
-        <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 6 }}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <View
-              key={i}
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                marginHorizontal: 4,
-                backgroundColor: i === 0 ? subText : `${subText}55`,
-              }}
-            />
-          ))}
+        <View style={{ marginTop: 12, borderRadius: 14, overflow: "hidden" }}>
+          <BannerSlider limit={8} onPressItem={(ev) => {
+            // TODO: 상세 페이지로 네비게이션 연결
+            console.log("[UI] BannerSlider:press", ev.id);
+          }} />
         </View>
+
+        {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
 
         {/* 섹션 헤더 */}
         <View style={{ marginTop: 20, marginBottom: 8, flexDirection: "row", alignItems: "center" }}>
