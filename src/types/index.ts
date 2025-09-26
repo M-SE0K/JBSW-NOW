@@ -20,6 +20,7 @@ export type Event = {
   tags?: string[];
   org: Org;
   sourceUrl?: string | null;
+  posterImageUrl?: string | null;
   ai?: EventAI | null;
 };
 
