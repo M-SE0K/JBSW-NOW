@@ -51,9 +51,11 @@ export default function RootLayout() {
                           <Ionicons name="search-outline" color={iconColor} size={24} />
                         </Pressable>
                       </Link>
-                      <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
-                        <Ionicons name="notifications-outline" color={iconColor} size={24} />
-                      </Pressable>
+                      <Link href="/notifications" asChild>
+                        <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
+                          <Ionicons name="notifications-outline" color={iconColor} size={24} />
+                        </Pressable>
+                      </Link>
                       <Pressable accessibilityLabel="menu" style={{ marginLeft: 18 }}>
                         <Ionicons name="menu-outline" color={iconColor} size={24} />
                       </Pressable>
@@ -71,29 +73,19 @@ export default function RootLayout() {
                 tabBarIcon: ({ color, size }) => (
                   <Ionicons name="bookmark-outline" color={color} size={size} />
                 ),
-                headerTitle: "",
-                headerLeft: () => {
-                  const iconColor = colorScheme === "dark" ? "#fff" : "#111";
-                  return (
-                    <Link href="/" asChild>
-                      <Pressable accessibilityLabel="go back" style={{ paddingRight: 8 }}>
-                        <Ionicons name="chevron-back" color={iconColor} size={24} />
-                      </Pressable>
-                    </Link>
-                  );
-                },
+                headerShown: false,
               }}
             />
 
-            /* 인기 게시물 */
+            /* 실시간 인기 소식 */
             <Tabs.Screen
-              name="settings/index"
+              name="hot/index"
               options={{
                 title: "",
                 tabBarIcon: ({ color, size }) => (
                   <Ionicons name="flame-outline" color={color} size={size} />
                 ),
-                headerTitle: "",
+                headerShown: false,
               }}
             />
             {/* 탭은 3개만 노출: 나머지 라우트는 탭 바에서 숨김 */}
@@ -103,6 +95,13 @@ export default function RootLayout() {
             <Tabs.Screen name="events/[id]" options={{ href: null }} />
             <Tabs.Screen name="orgs/index" options={{ href: null }} />
             <Tabs.Screen name="orgs/[orgId]" options={{ href: null }} />
+            <Tabs.Screen 
+              name="notifications/index" 
+              options={{ 
+                href: null,
+                headerShown: false 
+              }} 
+            />
             <Tabs.Screen 
               name="search/index" 
               options={{ 
