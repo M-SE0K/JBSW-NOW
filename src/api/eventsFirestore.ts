@@ -81,7 +81,7 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
 }
 
 // 최근 소식(이벤트) 피드: createdAt DESC 상위 N개
-export async function fetchRecentNews(maxCount: number = 20): Promise<Event[]> {
+export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
   const db = getFirestore();
   const eventsRef = collection(db, "events");
   const q = query(eventsRef, orderBy("createdAt", "desc"), limit(maxCount));

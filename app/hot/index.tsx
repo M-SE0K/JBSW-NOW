@@ -1,11 +1,12 @@
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, ScrollView, useColorScheme } from "react-native";
-import SectionHeader from "../SectionHeader";
-import BannerSlider from "../BannerSlider";
+import SectionHeader from "../../src/components/SectionHeader";
+import BannerSlider from "../../src/components/BannerSlider";
 import { useEffect, useState } from "react";
-import { fetchRecentNews } from "../../api/eventsFirestore";
-import EventsList from "../EventsList";
+import { fetchRecentNews } from "../../src/api/eventsFirestore";
+import EventCard from "../../src/components/EventCard";
+import EventsList from "../../src/components/EventsList";
 
 export default function Home() {
   const colorScheme = useColorScheme();
@@ -31,17 +32,7 @@ export default function Home() {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: 24 }}
       >
-        {/* 상단 배너 영역 */}
-        <View style={{ marginTop: 12, borderRadius: 14, overflow: "hidden" }}>
-          <BannerSlider limit={8} onPressItem={(ev) => {
-            // TODO: 상세 페이지로 네비게이션 연결
-            console.log("[UI] BannerSlider:press", ev.id);
-          }} />
-        </View>
-
-        {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
-
-        <SectionHeader title="새로운 소식" />
+        <SectionHeader title="실시간 인기 소식" />
 
         <EventsList
           events={news as any}
