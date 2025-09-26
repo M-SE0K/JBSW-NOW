@@ -80,4 +80,30 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
   }
 }
 
+// 최근 소식(이벤트) 피드: createdAt DESC 상위 N개
+export async function fetchRecentNews(maxCount: number = 20): Promise<Event[]> {
+  const db = getFirestore();
+  const eventsRef = collection(db, "events");
+  const q = query(eventsRef, orderBy("createdAt", "desc"), limit(maxCount));
+  const snap = await getDocs(q);
+  const out: Event[] = [];
+  snap.forEach((doc) => {
+    const d = doc.data() as any;
+    out.push({
+      id: doc.id,
+      title: d.title,
+      summary: d.summary ?? null,
+      startAt: d.startAt ?? null,
+      endAt: d.endAt ?? null,
+      location: d.location ?? null,
+      tags: d.tags ?? [],
+      org: d.org,
+      sourceUrl: d.sourceUrl ?? null,
+      posterImageUrl: d.posterImageUrl ?? null,
+      ai: d.ai ?? null,
+    } as Event);
+  });
+  return out;
+}
+
 
