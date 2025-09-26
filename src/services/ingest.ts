@@ -1,26 +1,34 @@
+// Firebase Firestore 초기화 및 필요한 함수 import
 import "../db/firebase";
-import { getFirestore, addDoc, collection, serverTimestamp } from "firebase/firestore";
+
+// Gemini API를 활용한 분석 함수 및 타입 import
 import { analyzePosterImage, analyzePosterText } from "../api/gemini/gemini";
-import { ContestFromImage, GeminiAnalysisResult, Org } from "../types";
+import { GeminiAnalysisResult, Org } from "../types";
+import { saveEventToFirestore } from "./eventsStore";
 
+// === 타입 정의 ===
+// 텍스트 입력 구조
 export type IngestInputText = {
-  text: string;
-  sourceUrl?: string | null;
-  org?: Org;
+  text: string; // 포스터 텍스트
+  sourceUrl?: string | null; // 원본 출처 URL
+  org?: Org; // 주최 기관 정보
 };
 
+// 이미지 입력 구조
 export type IngestInputImage = {
-  uri: string; // http(s) 또는 file:///asset URI
+  uri: string; // 이미지 URI (http(s), file:// 등)
   sourceUrl?: string | null;
   org?: Org;
 };
 
+// 결과 구조
 export type IngestResult = {
-  eventId: string;
-  analysis: GeminiAnalysisResult;
-  tags: string[];
+  eventId: string; // Firestore 문서 ID
+  analysis: GeminiAnalysisResult; // Gemini 분석 결과
+  tags: string[]; // 태그 목록
 };
 
+// 기본 Org 객체 (org 정보 없을 때 사용)
 const DEFAULT_ORG: Org = {
   id: "unknown",
   name: "Unknown",
@@ -28,35 +36,54 @@ const DEFAULT_ORG: Org = {
   homepageUrl: null,
 };
 
+// === 텍스트 입력 처리 ===
 export async function processCrawledText(input: IngestInputText): Promise<IngestResult> {
+  // Gemini API를 통해 텍스트 분석
   const analysis = await analyzePosterText({ text: input.text });
+
+  // 분석 결과에서 태그 추론
   const tags = inferTags(analysis);
-  const docId = await saveToFirestore({
+
+  // Firestore 저장 후 문서 ID 반환
+  const docId = await saveEventToFirestore({
     sourceUrl: input.sourceUrl ?? null,
     analysis,
     tags,
     org: input.org ?? DEFAULT_ORG,
   });
+
+  // 결과 반환
   return { eventId: docId, analysis, tags };
 }
 
+// === 이미지 입력 처리 ===
 export async function processCrawledImage(input: IngestInputImage): Promise<IngestResult> {
+  // Gemini API를 통해 이미지 분석
   const analysis = await analyzePosterImage({ uri: input.uri });
+
+  // 분석 결과에서 태그 추론
   const tags = inferTags(analysis);
-  const docId = await saveToFirestore({
+
+  // Firestore 저장 후 문서 ID 반환
+  const docId = await saveEventToFirestore({
     sourceUrl: input.sourceUrl ?? null,
     analysis,
     tags,
     org: input.org ?? DEFAULT_ORG,
   });
+
+  // 결과 반환
   return { eventId: docId, analysis, tags };
 }
 
+// === 태그 추론 함수 ===
 function inferTags(analysis: GeminiAnalysisResult): string[] {
+  // 원시 텍스트 + 추출 데이터(JSON)를 소문자로 변환
   const text = `${analysis.rawText}\n${JSON.stringify(analysis.extracted ?? {})}`.toLowerCase();
   const tags = new Set<string>();
   const add = (t: string) => tags.add(t);
 
+  // 키워드 기반 태그 추가
   if (/경진대회|콘테스트|해커톤|대회/.test(text)) add("contest");
   if (/채용|인턴|공채|커리어|잡페어/.test(text)) add("career");
   if (/세미나|강연|특강|워크숍|콘퍼런스|컨퍼런스/.test(text)) add("seminar");
@@ -65,65 +92,12 @@ function inferTags(analysis: GeminiAnalysisResult): string[] {
   if (/마감|deadline|마감일/.test(text)) add("deadline");
   if (/상금|prize|시상/.test(text)) add("prize");
 
-  // 날짜 존재 시 일정성 태그 부여
+  // 이벤트 시작/종료일 있으면 일정성 태그 부여
   const ex = analysis.extracted;
   if (ex?.eventStart || ex?.eventEnd) add("scheduled");
 
   return Array.from(tags);
 }
 
-async function saveToFirestore(params: {
-  sourceUrl: string | null;
-  analysis: GeminiAnalysisResult;
-  tags: string[];
-  org: Org;
-  posterImageUrl?: string | null;
-}): Promise<string> {
-  const db = getFirestore();
-  const ex: ContestFromImage | undefined = params.analysis.extracted;
-
-  // 필드 매핑: 추출값이 없을 때 합리적 기본값 사용
-  const title = ex?.title || deriveTitle(params.analysis.rawText);
-  const summary = ex?.summary || trimSummary(params.analysis.rawText, 300);
-  const startAt = ex?.eventStart || null;
-  const endAt = ex?.eventEnd || null;
-
-  const docData = {
-    title,
-    summary,
-    startAt,
-    endAt,
-    posterImageUrl: params.posterImageUrl ?? null,
-    location: ex?.location ?? null,
-    prize: ex?.prize ?? null,
-    contactEmail: ex?.contactEmail ?? null,
-    contactPhone: ex?.contactPhone ?? null,
-    links: ex?.links ?? [],
-    tags: params.tags,
-    org: params.org,
-    sourceUrl: params.sourceUrl,
-    ai: {
-      rawText: params.analysis.rawText,
-      extracted: ex ?? null,
-      model: "gemini-1.5-flash-latest",
-      processedAt: serverTimestamp(),
-    },
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  } as const;
-
-  const ref = await addDoc(collection(db, "events"), docData);
-  return ref.id;
-}
-
-function deriveTitle(raw: string): string {
-  const firstLine = (raw || "").split(/\n+/)[0]?.trim() || "제목 미상";
-  return firstLine.length > 80 ? firstLine.slice(0, 77) + "..." : firstLine;
-}
-
-function trimSummary(raw: string, max: number): string {
-  const t = (raw || "").replace(/\s+/g, " ").trim();
-  return t.length > max ? t.slice(0, max - 3) + "..." : t;
-}
-
-
+// === Firestore 저장 함수 ===
+// Firestore 저장 로직은 `src/services/eventsStore.ts`로 분리됨
