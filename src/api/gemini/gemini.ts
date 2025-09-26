@@ -3,7 +3,7 @@ import { extractTextFromCandidates, splitTextAndJson } from "./geminiParser";
 import { toInlineData } from "./geminiBase64";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-const GEMINI_MODEL = "gemini-1.5-flash-latest";
+const GEMINI_MODEL = "gemini-2.0-flash-lite";
 
 
 export async function analyzePosterImage(input: { uri: string }): Promise<GeminiAnalysisResult> {
