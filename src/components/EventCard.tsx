@@ -11,8 +11,20 @@ type Props = {
 
 export const EventCard = ({ event, onPress }: Props) => {
   const scheme = useColorScheme();
-  const openSource = () => {
-    if (event.sourceUrl) Linking.openURL(event.sourceUrl);
+  const openSource = async () => {
+    const urlRaw = event.sourceUrl;
+    if (!urlRaw) return;
+    try {
+      const url = encodeURI(urlRaw);
+      const can = await Linking.canOpenURL(url);
+      if (!can) {
+        console.warn("[UI] cannot open url", url);
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (e) {
+      console.warn("[UI] openURL error", e);
+    }
   };
   // 타이틀 가공: JSON 규칙으로 생성된 제목이 없을 경우, 간단 정제
   const displayTitle = typeof event.title === "string" ? cleanCrawledText(event.title, { maxLength: 80 }) : event.title;
