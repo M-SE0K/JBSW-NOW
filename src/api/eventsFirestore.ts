@@ -1,6 +1,7 @@
 import "../db/firebase";
 import { getFirestore, collection, query, where, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
 import type { Event } from "../types";
+import { formatRowTextForPost, cleanCrawledText } from "../utils/textCleaner";
 
 /**
  * Firestore에서 최근 14일 이내 생성된 이벤트 중 포스터 이미지가 있는 문서를 가져옵니다.
@@ -89,10 +90,24 @@ export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
   const out: Event[] = [];
   snap.forEach((doc) => {
     const d = doc.data() as any;
+    // Debug: raw rowText vs cleaned preview (for visual diff)
+    const rawRowText: string | undefined = d?.ai?.rawText;
+    if (rawRowText) {
+      const { text: cleanedPreview } = formatRowTextForPost(rawRowText);
+      // console.log("[DB] recentNews rowText/raw:", rawRowText.slice(0, 240));
+      // console.log("[DB] recentNews rowText/cleaned:", cleanedPreview.slice(0, 240));
+    }
+    // 시각화용 title/summary 정리: <TEXT> 마커/불필요 태그 제거
+    const cleanedTitle = typeof d.title === "string" ? cleanCrawledText(d.title, { maxLength: 300 }) : d.title;
+    let cleanedSummary: string | null = d.summary ?? null;
+    if (typeof cleanedSummary === "string") {
+      cleanedSummary = formatRowTextForPost(cleanedSummary).text;
+    }
+
     out.push({
       id: doc.id,
-      title: d.title,
-      summary: d.summary ?? null,
+      title: cleanedTitle,
+      summary: cleanedSummary,
       startAt: d.startAt ?? null,
       endAt: d.endAt ?? null,
       location: d.location ?? null,

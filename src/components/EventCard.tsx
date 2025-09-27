@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, useColorScheme, TouchableOpacity, Linking } from "react-native";
+import { cleanCrawledText } from "../utils/textCleaner";
 import { Event } from "../types";
 import { formatDateTime } from "../utils/date";
 
@@ -13,6 +14,9 @@ export const EventCard = ({ event, onPress }: Props) => {
   const openSource = () => {
     if (event.sourceUrl) Linking.openURL(event.sourceUrl);
   };
+  // 타이틀 가공: JSON 규칙으로 생성된 제목이 없을 경우, 간단 정제
+  const displayTitle = typeof event.title === "string" ? cleanCrawledText(event.title, { maxLength: 80 }) : event.title;
+
   return (
     <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={{
       backgroundColor: scheme === "dark" ? "#1c1c1c" : "#fff",
@@ -26,7 +30,7 @@ export const EventCard = ({ event, onPress }: Props) => {
       shadowOffset: { width: 0, height: 2 },
       elevation: 2,
     }}>
-      <Text style={{ fontSize: 16, fontWeight: "700", color: scheme === "dark" ? "#fff" : "#111" }}>{event.title}</Text>
+      <Text style={{ fontSize: 16, fontWeight: "700", color: scheme === "dark" ? "#fff" : "#111" }}>{displayTitle}</Text>
       {event.summary ? (
         <Text numberOfLines={3} style={{ marginTop: 8, color: scheme === "dark" ? "#ddd" : "#444" }}>{event.summary}</Text>
       ) : null}
