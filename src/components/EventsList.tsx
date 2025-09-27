@@ -9,9 +9,10 @@ type Props = {
   emptyText?: string;
   onPressItem?: (event: Event) => void;
   style?: any;
+  ListHeaderComponent?: React.ReactNode;
 };
 
-export default function EventsList({ events, placeholderColor, emptyText = "최근 소식이 없습니다.", onPressItem, style }: Props) {
+export default function EventsList({ events, placeholderColor, emptyText = "최근 소식이 없습니다.", onPressItem, style, ListHeaderComponent }: Props) {
   const renderItem = ({ item }: { item: Event }) => (
     <EventCard event={item} onPress={() => onPressItem?.(item)} />
   );
@@ -27,10 +28,11 @@ export default function EventsList({ events, placeholderColor, emptyText = "최�
       data={events}
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
-      style={[{ marginTop: 4 }, style]}
-      contentContainerStyle={{ flexGrow: 1 }}
+      style={[{ flex: 1 }, style]}
+      contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 24 }}
       showsVerticalScrollIndicator={false}
       ListEmptyComponent={renderEmptyComponent}
+      ListHeaderComponent={ListHeaderComponent as any}
     />
   );
 }
