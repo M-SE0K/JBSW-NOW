@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, useColorScheme, TouchableOpacity, Linking } from "react-native";
+import { isFavorite, toggleFavorite, subscribe, ensureUserId } from "../services/favorites";
 import { cleanCrawledText } from "../utils/textCleaner";
 import { Event } from "../types";
 import { formatDateTime } from "../utils/date";
@@ -11,6 +12,13 @@ type Props = {
 
 export const EventCard = ({ event, onPress }: Props) => {
   const scheme = useColorScheme();
+  const [fav, setFav] = React.useState<boolean>(isFavorite(event.id));
+  React.useEffect(() => {
+    ensureUserId();
+    setFav(isFavorite(event.id));
+    const unsub = subscribe(() => setFav(isFavorite(event.id)));
+    return unsub;
+  }, [event.id]);
   const openSource = async () => {
     const urlRaw = event.sourceUrl;
     if (!urlRaw) return;
@@ -68,11 +76,18 @@ export const EventCard = ({ event, onPress }: Props) => {
 
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
         <Text style={{ color: scheme === "dark" ? "#aaa" : "#666" }}>{event.org?.name}</Text>
-        {event.sourceUrl ? (
-          <TouchableOpacity onPress={openSource}>
-            <Text style={{ color: "#2f80ed", fontWeight: "600" }}>원문 보기</Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {event.sourceUrl ? (
+            <TouchableOpacity onPress={openSource} style={{ marginRight: 14 }}>
+              <Text style={{ color: "#2f80ed", fontWeight: "600" }}>원문 보기</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity onPress={async () => { console.log("[FAV] press toggle", { id: event.id }); await toggleFavorite(event.id); }}>
+            <Text style={{ color: fav ? "#e11d48" : (scheme === "dark" ? "#aaa" : "#666"), fontWeight: "700" }}>
+              {fav ? "♥" : "♡"}
+            </Text>
           </TouchableOpacity>
-        ) : null}
+        </View>
       </View>
     </TouchableOpacity>
   );
