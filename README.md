@@ -30,6 +30,8 @@ cd <REPO_DIR>
 ```bash
 rm -f pnpm-lock.yaml yarn.lock
 ```
+
+git pr test
 3) 의존성 설치
 ```bash
 npm install
