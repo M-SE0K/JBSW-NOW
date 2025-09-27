@@ -75,6 +75,41 @@ export default function NotificationSettingsScreen() {
         favoritesNotifications: settings.favoritesNotifications,
       });
     }
+    // 하위 알림 설정 변경 시
+    else if (['newNewsNotifications', 'popularNewsNotifications', 'favoritesNotifications'].includes(key)) {
+      // 하위 알림 3개가 모두 꺼져있으면 전체 알림도 자동으로 꺼짐
+      const updatedSubSettings = {
+        ...newSettings,
+        newNewsNotifications: key === 'newNewsNotifications' ? value : settings.newNewsNotifications,
+        popularNewsNotifications: key === 'popularNewsNotifications' ? value : settings.popularNewsNotifications,
+        favoritesNotifications: key === 'favoritesNotifications' ? value : settings.favoritesNotifications,
+      };
+      
+      const allSubNotificationsOff = !updatedSubSettings.newNewsNotifications && 
+                                   !updatedSubSettings.popularNewsNotifications && 
+                                   !updatedSubSettings.favoritesNotifications;
+      
+      if (allSubNotificationsOff) {
+        // 하위 알림 3개가 모두 OFF 상태로 표시되면서 동시에 비활성화되고 전체 알림도 OFF
+        const finalSettings = {
+          ...updatedSubSettings,
+          allNotifications: false,
+        };
+        setDisplaySettings({
+          ...finalSettings,
+          newNewsNotifications: false,  // OFF 상태로 표시
+          popularNewsNotifications: false,  // OFF 상태로 표시
+          favoritesNotifications: false,  // OFF 상태로 표시
+        });
+        setSettings(finalSettings);
+        saveNotificationSettings(finalSettings);
+        return;
+      } else {
+        setDisplaySettings(updatedSubSettings);
+      }
+      
+      newSettings = updatedSubSettings;
+    }
     // 일반적인 설정 변경
     else {
       setDisplaySettings(newSettings);
