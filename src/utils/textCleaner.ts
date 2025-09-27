@@ -98,6 +98,10 @@ export function cleanCrawledText(raw: string, options?: { maxLength?: number }):
   // 6) 간단한 꼬리표/푸터 패턴 제거 예시
   t = t.replace(/(무단\s?배포\s?금지|All\s?rights\s?reserved).*/i, "").trim();
 
+  // 6-1) 제목/문장 말미의 "새글" 꼬리표 제거
+  // 예: "... 제목 새글", "... 제목 [새글]", "... 제목 - 새글", "... 제목 | 새 글"
+  t = t.replace(/\s*(?:[\-\|·]\s*)?(?:[\[(]?\s*새\s*글\s*[\])]?|새\s*글)\s*$/i, "").trim();
+
   if (t.length > max) t = t.slice(0, max - 3) + "...";
   return t;
 }
