@@ -31,8 +31,8 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
   // 충분한 수집을 위해 쿼리 limit을 여유 있게 늘린 뒤(slice) 반환합니다.
   const q = query(
     eventsRef,
-    where("createdAt", ">=", fourteenDaysAgo),
-    orderBy("createdAt", "desc"),
+    where("date", ">=", fourteenDaysAgo),
+    orderBy("date", "desc"),
     limit(Math.max(20, maxCount * 3))
   );
 
@@ -54,7 +54,7 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
       console.log("[DB] fetchRecentPosterEvents:doc", {
         id: doc.id,
         posterImageUrl: d?.posterImageUrl ?? null,
-        createdAt: d?.createdAt?.toDate?.()?.toISOString?.() ?? d?.createdAt ?? null,
+        date: d?.date?.toDate?.()?.toISOString?.() ?? d?.date ?? null,
       });
       // 필요한 필드만 추출하고 기본값을 보강합니다.
       collected.push({
@@ -112,7 +112,7 @@ export async function fetchRecentNotificationBanners(maxCount: number = 10): Pro
       id: `notif-${doc.id}`,
       title: d?.title || "",
       summary: d?.body || d?.content || null,
-      startAt: d?.createdAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+      startAt: d?.date?.toDate?.()?.toISOString?.() || new Date().toISOString(),
       endAt: null,
       location: null,
       tags: ["알림"],
@@ -137,7 +137,7 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
     snap = await getDocs(query(ref, orderBy("dateSort", "desc"), limit(maxCount * 3)));
   } catch (_) {
     try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount * 3)));
+      snap = await getDocs(query(ref, orderBy("date", "desc"), limit(maxCount * 3)));
     } catch {
       try {
         snap = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount * 3)));
@@ -149,12 +149,12 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
   // createdAt 정렬이 비어있는 경우에도 폴백 수행
   if (snap.empty) {
     try {
-      const fbSnap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount * 3)));
+      const fbSnap = await getDocs(query(ref, orderBy("date", "desc"), limit(maxCount * 3)));
       if (!fbSnap.empty) {
         snap = fbSnap;
       } else {
         try {
-          const fb2 = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount * 3)));
+          const fb2 = await getDocs(query(ref, orderBy("firebase_date", "desc"), limit(maxCount * 3)));
           snap = fb2;
         } catch (_) {
           const plain = await getDocs(query(ref, limit(maxCount * 3)));
@@ -200,7 +200,7 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
       id: `notice-${doc.id}`,
       title,
       summary: null,
-      startAt: d?.createdAt?.toDate?.()?.toISOString?.() || d?.firebase_created_at || new Date().toISOString(),
+      startAt: d?.date?.toDate?.()?.toISOString?.() || d?.firebase_date || new Date().toISOString(),
       endAt: null,
       location: null,
       tags: ["공지"],
@@ -220,7 +220,7 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
 export async function searchHotNews(searchTerm: string, maxCount: number = 20): Promise<Event[]> {
   const db = getFirestore();
   const eventsRef = collection(db, "events");
-  const q = query(eventsRef, orderBy("createdAt", "desc"), limit(maxCount));
+  const q = query(eventsRef, orderBy("date", "desc"), limit(maxCount));
   const snap = await getDocs(q);
   const out: Event[] = [];
   snap.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
@@ -258,7 +258,7 @@ export async function searchHotNews(searchTerm: string, maxCount: number = 20): 
   // Firestore에서 제목이나 요약에 검색어가 포함된 이벤트를 가져옵니다
   const firestoreQuery = query(
     eventsRef,
-    orderBy("createdAt", "desc"),
+    orderBy("date", "desc"),
     limit(maxCount)
   );
 
@@ -339,7 +339,7 @@ export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
   try {
     const db = getFirestore();
     const eventsRef = collection(db, "events");
-    const q = query(eventsRef, orderBy("createdAt", "desc"), limit(maxCount));
+    const q = query(eventsRef, orderBy("date", "desc"), limit(maxCount));
     const snap = await getDocs(q);
     const out: Event[] = [];
     snap.forEach((doc) => {
@@ -376,7 +376,7 @@ export async function fetchRecentNewsWithinDays(days: number = 30, maxCount: num
     const eventsRef = collection(db, "events");
     const now = Timestamp.now();
     const cutoff = Timestamp.fromMillis(now.toMillis() - days * 24 * 60 * 60 * 1000);
-    const qy = query(eventsRef, where("createdAt", ">=", cutoff), orderBy("createdAt", "desc"), limit(Math.max(maxCount, 50)));
+    const qy = query(eventsRef, where("date", ">=", cutoff), orderBy("date", "desc"), limit(Math.max(maxCount, 50)));
     const snap = await getDocs(qy);
     const out: Event[] = [];
     snap.forEach((doc) => {
@@ -407,8 +407,8 @@ export async function fetchRecentNewsByDateWithinDays(days: number = 30, maxCoun
   try {
     const db = getFirestore();
     const eventsRef = collection(db, "events");
-    // 충분한 수집: createdAt DESC로 넉넉히 가져온 후 날짜 문자열(startAt/endAt)로 필터
-    const snap = await getDocs(query(eventsRef, orderBy("createdAt", "desc"), limit(Math.max(maxCount * 3, 150))));
+    // 충분한 수집: date DESC로 넉넉히 가져온 후 날짜 문자열(startAt/endAt)로 필터
+    const snap = await getDocs(query(eventsRef, orderBy("date", "desc"), limit(Math.max(maxCount * 3, 150))));
     const cutoffMs = Date.now() - days * 24 * 60 * 60 * 1000;
     const out: Event[] = [];
     snap.forEach((doc) => {
@@ -505,7 +505,7 @@ export async function fetchNoticesCleaned(maxCount: number = 20): Promise<Notice
     try {
       snap = await getDocs(query(ref, orderBy("dateSort", "desc"), limit(maxCount)));
     } catch {
-      // 2차: createdAt(Timestamp) 기준 정렬 시도
+      // 2차: date(Timestamp) 기준 정렬 시도
       snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount)));
     }
   }
