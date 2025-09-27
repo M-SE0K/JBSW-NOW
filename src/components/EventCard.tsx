@@ -39,6 +39,12 @@ export const EventCard = ({ event, onPress }: Props) => {
   };
   // 타이틀 가공: JSON 규칙으로 생성된 제목이 없을 경우, 간단 정제
   const displayTitle = typeof event.title === "string" ? cleanCrawledText(event.title, { maxLength: 80 }) : event.title;
+  const displaySummary = (() => {
+    const fromSummary = typeof event.summary === "string" ? event.summary : null;
+    const fromAi = event.ai && typeof event.ai.summary === "string" ? event.ai.summary : null;
+    const text = fromSummary || fromAi;
+    return text ? cleanCrawledText(text, { maxLength: 300 }) : null;
+  })();
 
   return (
     <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={{
@@ -54,8 +60,8 @@ export const EventCard = ({ event, onPress }: Props) => {
       elevation: 2,
     }}>
       <Text style={{ fontSize: 16, fontWeight: "700", color: scheme === "dark" ? "#fff" : "#111" }}>{displayTitle}</Text>
-      {event.summary ? (
-        <Text numberOfLines={3} style={{ marginTop: 8, color: scheme === "dark" ? "#ddd" : "#444" }}>{event.summary}</Text>
+      {displaySummary ? (
+        <Text numberOfLines={3} style={{ marginTop: 8, color: scheme === "dark" ? "#ddd" : "#444" }}>{displaySummary}</Text>
       ) : null}
 
       <View style={{ marginTop: 10 }}>
