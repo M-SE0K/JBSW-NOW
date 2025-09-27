@@ -94,13 +94,20 @@ export default function RootLayout() {
                 headerShown: false 
               }} 
             />
-            <Tabs.Screen 
-              name="search/index" 
-              options={{ 
-                href: null,
-                headerShown: false 
-              }} 
-            />
+                   <Tabs.Screen 
+                     name="search/index" 
+                     options={{ 
+                       href: null,
+                       headerShown: false 
+                     }} 
+                   />
+                   <Tabs.Screen 
+                     name="settings/index" 
+                     options={{ 
+                       href: null,
+                       headerShown: false 
+                     }} 
+                   />
             {/* 테스트 라우트 */}
             <Tabs.Screen
               name="test/local-image"
