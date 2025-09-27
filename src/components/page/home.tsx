@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import SectionHeader from "../SectionHeader";
 import BannerSlider from "../BannerSlider";
 import { useEffect, useState } from "react";
+import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import EventsList from "../EventsList";
 
@@ -17,6 +18,7 @@ export default function Home() {
   const [news, setNews] = useState<any[]>([]);
   const [newsLimit, setNewsLimit] = useState<number>(20);
   const [noticeLimit, setNoticeLimit] = useState<number>(3);
+  const [favTick, setFavTick] = useState<number>(0);
 
   const handleMorePress = () => {
     router.push("/events");
@@ -88,6 +90,13 @@ export default function Home() {
     })();
   }, [newsLimit, noticeLimit]);
 
+  // 즐겨찾기 변경 구독: 재조회 없이 카드 상태만 리렌더
+  useEffect(() => {
+    ensureFavUser();
+    const unsub = subscribeFavorites(() => setFavTick((v) => v + 1));
+    return () => unsub();
+  }, []);
+
   // 다양한 날짜 문자열(예: 2025.07.30, 2025. 7. 28.(월), ISO 등)을 ISO로 정규화
   function deriveIsoDate(input?: string | null): string {
     if (!input || typeof input !== "string") return new Date().toISOString();
@@ -128,6 +137,7 @@ export default function Home() {
       <EventsList
         events={news as any}
         placeholderColor={placeholder}
+        extraData={favTick}
         ListHeaderComponent={
           <View>
             {/* 상단 배너 영역 */}
