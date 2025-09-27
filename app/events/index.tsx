@@ -10,7 +10,7 @@ import EmptyState from "../../src/components/EmptyState";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import { fetchEvents } from "../../src/api/events";
-import { fetchRecentNews, searchHotNews, saveHotRecentSearch } from "../../src/api/eventsFirestore";
+import { fetchNoticesCleaned, searchHotNews, saveHotRecentSearch } from "../../src/api/eventsFirestore";
 import { Event } from "../../src/types";
 import { useRouter } from "expo-router";
 
@@ -21,18 +21,67 @@ export default function EventsScreen() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
 
-  // 새로운 소식 데이터 로드
+  // 새로운 소식 데이터 로드 (notices만 사용, date 내림차순)
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchRecentNews(20);
-        setNews(data);
+        const notices = await fetchNoticesCleaned(100);
+        const noticeAsEvents = (notices || []).map((n: any) => {
+          const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
+          return {
+            id: `notice-${n.id}`,
+            title: n.title,
+            summary: n.content ? String(n.content).slice(0, 200) : null,
+            startAt: startAtIso,
+            endAt: null,
+            location: null,
+            tags: ["공지"],
+            org: { id: "notice", name: n.author || "공지", logoUrl: null },
+            sourceUrl: n.url || null,
+            posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
+            ai: null,
+          } as any;
+        });
+
+        noticeAsEvents.sort((a: any, b: any) => (toDateMsFromString(b.startAt) - toDateMsFromString(a.startAt)));
+        setNews(noticeAsEvents);
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
         setNews([]);
       }
     })();
   }, []);
+
+  function deriveIsoDate(input?: string | null): string {
+    if (!input || typeof input !== "string") return new Date().toISOString();
+    const s = input.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s).toISOString();
+    const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      const dt = new Date(Date.UTC(y, Math.max(0, mo - 1), d, 0, 0, 0));
+      return dt.toISOString();
+    }
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) return parsed.toISOString();
+    return new Date().toISOString();
+  }
+
+  function toDateMsFromString(s?: string | null): number {
+    if (!s || typeof s !== "string") return 0;
+    const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      const dt = new Date(y, Math.max(0, mo - 1), d, 0, 0, 0);
+      return dt.getTime();
+    }
+    const t = Date.parse(s);
+    return Number.isNaN(t) ? 0 : t;
+  }
 
   const handleSearch = async () => {
     if (searchQuery.trim().length === 0) return;
