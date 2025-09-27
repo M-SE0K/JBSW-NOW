@@ -46,7 +46,7 @@ export default function EventsScreen() {
 
         noticeAsEvents.sort((a: any, b: any) => (toDateMsFromString(b.startAt) - toDateMsFromString(a.startAt)));
         setAllItems(noticeAsEvents);
-        setNews(noticeAsEvents.slice(0, 5));
+        setNews(noticeAsEvents.slice(0, 100));
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
         setNews([]);

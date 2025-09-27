@@ -369,6 +369,92 @@ export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
   }
 }
 
+// 최근 N일 이내 createdAt 기준으로 최신 소식 조회
+export async function fetchRecentNewsWithinDays(days: number = 30, maxCount: number = 50): Promise<Event[]> {
+  try {
+    const db = getFirestore();
+    const eventsRef = collection(db, "events");
+    const now = Timestamp.now();
+    const cutoff = Timestamp.fromMillis(now.toMillis() - days * 24 * 60 * 60 * 1000);
+    const qy = query(eventsRef, where("createdAt", ">=", cutoff), orderBy("createdAt", "desc"), limit(Math.max(maxCount, 50)));
+    const snap = await getDocs(qy);
+    const out: Event[] = [];
+    snap.forEach((doc) => {
+      const d = doc.data() as any;
+      out.push({
+        id: doc.id,
+        title: d.title,
+        summary: d.summary ?? null,
+        startAt: d.startAt ?? null,
+        endAt: d.endAt ?? null,
+        location: d.location ?? null,
+        tags: d.tags ?? [],
+        org: d.org,
+        sourceUrl: d.sourceUrl ?? null,
+        posterImageUrl: d.posterImageUrl ?? null,
+        ai: d.ai ?? null,
+      } as Event);
+    });
+    return out;
+  } catch (error) {
+    console.error("[DB] fetchRecentNewsWithinDays:error", error);
+    return [];
+  }
+}
+
+// startAt(또는 endAt) "날짜 문자열"을 기준으로 최근 N일 내 이벤트를 가져옵니다(클라이언트 필터).
+export async function fetchRecentNewsByDateWithinDays(days: number = 30, maxCount: number = 100): Promise<Event[]> {
+  try {
+    const db = getFirestore();
+    const eventsRef = collection(db, "events");
+    // 충분한 수집: createdAt DESC로 넉넉히 가져온 후 날짜 문자열(startAt/endAt)로 필터
+    const snap = await getDocs(query(eventsRef, orderBy("createdAt", "desc"), limit(Math.max(maxCount * 3, 150))));
+    const cutoffMs = Date.now() - days * 24 * 60 * 60 * 1000;
+    const out: Event[] = [];
+    snap.forEach((doc) => {
+      const d = doc.data() as any;
+      const startStr: string | null = d?.startAt ?? null;
+      const endStr: string | null = d?.endAt ?? null;
+      const targetStr = startStr || endStr;
+      const ms = parseDateMsFromString(targetStr);
+      if (ms && ms >= cutoffMs) {
+        out.push({
+          id: doc.id,
+          title: d.title,
+          summary: d.summary ?? null,
+          startAt: d.startAt ?? null,
+          endAt: d.endAt ?? null,
+          location: d.location ?? null,
+          tags: d.tags ?? [],
+          org: d.org,
+          sourceUrl: d.sourceUrl ?? null,
+          posterImageUrl: d.posterImageUrl ?? null,
+          ai: d.ai ?? null,
+        } as Event);
+      }
+    });
+    return out;
+  } catch (error) {
+    console.error("[DB] fetchRecentNewsByDateWithinDays:error", error);
+    return [];
+  }
+}
+
+function parseDateMsFromString(s?: string | null): number | null {
+  if (!s || typeof s !== "string") return null;
+  // YYYY-MM-DD 또는 ISO
+  const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+  if (m) {
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    const dt = new Date(y, Math.max(0, mo - 1), d, 0, 0, 0);
+    return dt.getTime();
+  }
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : t;
+}
+
 // 새로운 소식 모의 데이터
 function getMockRecentNews(): Event[] {
   return [
