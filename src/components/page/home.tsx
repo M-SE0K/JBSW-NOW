@@ -1,63 +1,123 @@
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, ScrollView, useColorScheme } from "react-native";
-import { useRouter } from "expo-router";
+import { View, useColorScheme } from "react-native";
 import SectionHeader from "../SectionHeader";
 import BannerSlider from "../BannerSlider";
 import { useEffect, useState } from "react";
-import { fetchRecentNews } from "../../api/eventsFirestore";
+import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import EventsList from "../EventsList";
 
 export default function Home() {
-  const router = useRouter();
   const colorScheme = useColorScheme();
   const placeholder = colorScheme === "dark" ? "#2B2F33" : "#E4EAEE";
   const textColor = colorScheme === "dark" ? "#fff" : "#111";
   const subText = colorScheme === "dark" ? "#C8CDD2" : "#6B7280";
   const [news, setNews] = useState<any[]>([]);
+  const [newsLimit, setNewsLimit] = useState<number>(20);
+  const [noticeLimit, setNoticeLimit] = useState<number>(3);
+  const [expanded, setExpanded] = useState<boolean>(false);
 
   const handleMorePress = () => {
-    router.push("/events");
+    // 같은 화면에서 더 많이 로드
+    setExpanded(true);
+    setNewsLimit(100);
+    setNoticeLimit(30);
   };
 
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchRecentNews(20);
-        setNews(data);
+        // 이벤트와 공지를 병렬로 조회
+        const [eventsData, notices] = await Promise.all([
+          fetchRecentNews(newsLimit),
+          fetchNoticesCleaned(noticeLimit),
+        ]);
+
+        console.log("[UI] Home:fetch done", {
+          eventsCount: Array.isArray(eventsData) ? eventsData.length : 0,
+          noticesCount: Array.isArray(notices) ? notices.length : 0,
+        });
+        ;(notices || []).slice(0, 20).forEach((n: any, i: number) => {
+          console.log("[UI] Home:notice sample", i, {
+            id: n.id,
+            title: typeof n.title === "string" ? n.title.slice(0, 120) : n.title,
+            url: n.url || null,
+          });
+        });
+
+        // Notice를 Event 형태로 간단 매핑(표시를 위한 최소 필드)
+        const noticeAsEvents = (notices || []).map((n: any) => {
+          const firstImage = Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null;
+          const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
+          return {
+            id: `notice-${n.id}`,
+            title: n.title,
+            summary: n.content ? String(n.content).slice(0, 200) : null,
+            startAt: startAtIso,
+            endAt: null,
+            location: null,
+            tags: ["공지"],
+            org: { id: "notice", name: n.author || "공지", logoUrl: null },
+            sourceUrl: n.url || null,
+            posterImageUrl: firstImage,
+            ai: null,
+          } as any;
+        });
+
+        // 공지 3건 + 기존 이벤트를 묶어서 렌더링
+        const merged = [...noticeAsEvents, ...eventsData];
+        console.log("[UI] Home:merged feed size", merged.length);
+        setNews(merged);
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
       }
     })();
-  }, []);
+  }, [newsLimit, noticeLimit]);
+
+  // 다양한 날짜 문자열(예: 2025.07.30, 2025. 7. 28.(월), ISO 등)을 ISO로 정규화
+  function deriveIsoDate(input?: string | null): string {
+    if (!input || typeof input !== "string") return new Date().toISOString();
+    const s = input.trim();
+    // 이미 ISO인 경우
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s).toISOString();
+    // 2025.07.30 또는 2025. 7. 30. (월) 형태를 포착
+    const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      const dt = new Date(Date.UTC(y, Math.max(0, mo - 1), d, 0, 0, 0));
+      return dt.toISOString();
+    }
+    // 그 외 문자열은 Date 파서에 위임(실패 시 현재 시각)
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) return parsed.toISOString();
+    return new Date().toISOString();
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["left", "right", "bottom"]}>
-      <ScrollView
-        contentInsetAdjustmentBehavior="never"
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: 24 }}
-      >
-        {/* 상단 배너 영역 */}
-        <View style={{ marginTop: 12, borderRadius: 14, overflow: "hidden" }}>
-          <BannerSlider limit={8} onPressItem={(ev) => {
-            // TODO: 상세 페이지로 네비게이션 연결
-            console.log("[UI] BannerSlider:press", ev.id);
-          }} />
-        </View>
-
-        {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
-
-        <SectionHeader title="새로운 소식" onPressMore={handleMorePress} />
-
-        <EventsList
-          events={news as any}
-          placeholderColor={placeholder}
-          onPressItem={(ev: any) => {
-            // TODO: 상세 라우팅 연결
-            console.log("[UI] news press", ev.id);
-          }}
-        />
-      </ScrollView>
+      <EventsList
+        events={news as any}
+        placeholderColor={placeholder}
+        ListHeaderComponent={
+          <View>
+            {/* 상단 배너 영역 */}
+            <View style={{ marginTop: 12, borderRadius: 14, overflow: "hidden" }}>
+              <BannerSlider limit={8} onPressItem={(ev) => {
+                // TODO: 상세 페이지로 네비게이션 연결
+                console.log("[UI] BannerSlider:press", ev.id);
+              }} />
+            </View>
+            {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
+            <SectionHeader title="새로운 소식" onPressMore={handleMorePress} showMore={!expanded} />
+          </View>
+        }
+        onPressItem={(ev: any) => {
+          // TODO: 상세 라우팅 연결
+          console.log("[UI] news press", ev.id);
+        }}
+      />
     </SafeAreaView>
   );
 }
