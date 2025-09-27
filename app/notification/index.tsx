@@ -51,7 +51,10 @@ export default function NotificationsScreen() {
             <Ionicons name="chevron-back" size={24} color="#000" />
           </Pressable>
           
-          <Pressable style={styles.settingsButton}>
+          <Pressable 
+            style={styles.settingsButton}
+            onPress={() => router.push("/notification/settings")}
+          >
             <Ionicons name="settings-outline" size={24} color="#000" />
           </Pressable>
         </View>
