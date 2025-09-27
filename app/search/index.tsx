@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { Event } from "../../src/types";
 import EventCard from "../../src/components/EventCard";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
+import { enrichEventsWithTags } from "../../src/services/tags";
 import { searchByAllWords, normalize } from "../../src/services/search";
 
 export default function SearchScreen() {
@@ -46,20 +47,21 @@ export default function SearchScreen() {
 
   const preloadData = async () => {
     try {
-      const notices = await fetchNoticesCleaned(1000);
-      const noticeAsEvents: Event[] = (notices || []).map((n: any) => ({
+      const notices = await fetchNoticesCleaned(10);
+      const noticeAsEventsRaw: Event[] = (notices || []).map((n: any) => ({
         id: `notice-${n.id}`,
         title: n.title,
         summary: n.content ? String(n.content).slice(0, 200) : null,
         startAt: n.date || n.crawled_at || n.firebase_created_at || "",
         endAt: null,
         location: null,
-        tags: ["공지"],
+        tags: [],
         org: { id: "notice", name: n.author || "공지", logoUrl: null },
         sourceUrl: n.url || null,
         posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
         ai: null,
       } as any));
+      const noticeAsEvents = await enrichEventsWithTags(noticeAsEventsRaw as any);
       setAllItems(noticeAsEvents);
     } catch (e) {
       console.warn("[UI] preloadData error", e);

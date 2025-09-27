@@ -6,6 +6,7 @@ import EventsList from "../../src/components/EventsList";
 import type { Event } from "../../src/types";
 import { fetchRecentHotTopWithinDays } from "../../src/services/hot";
 import { subscribe as subscribeFavorites, ensureUserId as ensureFavUser } from "../../src/services/favorites";
+import { enrichEventsWithTags } from "../../src/services/tags";
 
 export default function HotScreen() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -16,7 +17,8 @@ export default function HotScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const top10 = await fetchRecentHotTopWithinDays(30, 10);
+      const top10Raw = await fetchRecentHotTopWithinDays(30, 10);
+      const top10 = await enrichEventsWithTags(top10Raw as any);
       setEvents(top10);
     } catch (e) {
       //console.error("[HOT] load error", e);
@@ -29,7 +31,8 @@ export default function HotScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const top10 = await fetchRecentHotTopWithinDays(30, 10);
+      const top10Raw = await fetchRecentHotTopWithinDays(30, 10);
+      const top10 = await enrichEventsWithTags(top10Raw as any);
       setEvents(top10);
     } catch (e) {
       //console.error("[HOT] refresh error", e);
