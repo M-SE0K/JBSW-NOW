@@ -1,5 +1,5 @@
 import "../db/firebase";
-import { getFirestore, collection, query, where, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
+import { getFirestore, collection, query, where, orderBy, limit, getDocs, Timestamp, type QueryDocumentSnapshot, type DocumentData } from "firebase/firestore";
 import type { Event } from "../types";
 import { formatRowTextForPost, cleanCrawledText } from "../utils/textCleaner";
 
@@ -89,13 +89,13 @@ export async function fetchRecentNotificationBanners(maxCount: number = 10): Pro
   // createdAt 기준 최근 순, 실패 시 정렬 없이 제한만 적용
   let snap;
   try {
-    snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount * 3)));
+    snap = await getDocs(query(ref, orderBy("date", "desc"), limit(maxCount * 3)));
   } catch (_) {
     snap = await getDocs(query(ref, limit(maxCount * 3)));
   }
 
   const out: Event[] = [];
-  snap.forEach((doc) => {
+  snap.forEach((doc: { id: string; data: () => any }) => {
     const d = doc.data() as any;
     const candidates: Array<string | null | undefined> = [
       d?.imageUrl,
@@ -134,23 +134,32 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
   const ref = collection(db, "notices");
   let snap;
   try {
-    snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount * 3)));
+    snap = await getDocs(query(ref, orderBy("dateSort", "desc"), limit(maxCount * 3)));
   } catch (_) {
     try {
-      snap = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount * 3)));
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount * 3)));
     } catch {
-      snap = await getDocs(query(ref, limit(maxCount * 3)));
+      try {
+        snap = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount * 3)));
+      } catch {
+        snap = await getDocs(query(ref, limit(maxCount * 3)));
+      }
     }
   }
   // createdAt 정렬이 비어있는 경우에도 폴백 수행
   if (snap.empty) {
     try {
-      const fbSnap = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount * 3)));
+      const fbSnap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount * 3)));
       if (!fbSnap.empty) {
         snap = fbSnap;
       } else {
-        const plain = await getDocs(query(ref, limit(maxCount * 3)));
-        snap = plain;
+        try {
+          const fb2 = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount * 3)));
+          snap = fb2;
+        } catch (_) {
+          const plain = await getDocs(query(ref, limit(maxCount * 3)));
+          snap = plain;
+        }
       }
     } catch (_) {
       const plain = await getDocs(query(ref, limit(maxCount * 3)));
@@ -160,7 +169,7 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
 
   const out: Event[] = [];
   console.log("[DB] fetchRecentNoticeBanners:snapshot", { count: snap.size });
-  snap.forEach((doc) => {
+  snap.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
     const d = doc.data() as any;
     const title: string = d?.title || "";
     const url: string | null = d?.url || null;
@@ -184,7 +193,7 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
       if (m && m[0]) image = m[0];
     }
 
-    console.log("[DB] fetchRecentNoticeBanners:doc", { id: doc.id, hasImage: !!image, title: title?.slice?.(0, 60) });
+    //console.log("[DB] fetchRecentNoticeBanners:doc", { id: doc.id, hasImage: !!image, title: title?.slice?.(0, 60) });
     if (!image) return;
 
     out.push({
@@ -203,7 +212,7 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
   });
 
   const sliced = out.slice(0, maxCount);
-  console.log("[DB] fetchRecentNoticeBanners:out", { count: sliced.length });
+  //console.log("[DB] fetchRecentNoticeBanners:out", { count: sliced.length });
   return sliced;
 }
 
@@ -214,7 +223,7 @@ export async function searchHotNews(searchTerm: string, maxCount: number = 20): 
   const q = query(eventsRef, orderBy("createdAt", "desc"), limit(maxCount));
   const snap = await getDocs(q);
   const out: Event[] = [];
-  snap.forEach((doc) => {
+  snap.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
     const d = doc.data() as any;
     // Debug: raw rowText vs cleaned preview (for visual diff)
     const rawRowText: string | undefined = d?.ai?.rawText;
@@ -401,14 +410,25 @@ export async function fetchNoticesCleaned(maxCount: number = 20): Promise<Notice
   const db = getFirestore();
   const ref = collection(db, "notices");
 
-  // 1차: createdAt(Timestamp) 기준 정렬 시도
-  let snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount)));
+  // 0차: date(문자열) 기준 정렬 시도
+  let snap: any;
+  try {
+    snap = await getDocs(query(ref, orderBy("date", "desc"), limit(maxCount)));
+  } catch (_) {
+    // 1차: dateSort(Timestamp/number) 기준 정렬 시도
+    try {
+      snap = await getDocs(query(ref, orderBy("dateSort", "desc"), limit(maxCount)));
+    } catch {
+      // 2차: createdAt(Timestamp) 기준 정렬 시도
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount)));
+    }
+  }
   if (snap.empty) {
-    // 2차: firebase_created_at(ISO 문자열) 기준 정렬 시도
+    // 3차: firebase_created_at(ISO 문자열) 기준 정렬 시도
     try {
       snap = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount)));
       if (snap.empty) {
-        // 3차: 정렬 없이 제한만
+        // 4차: 정렬 없이 제한만
         snap = await getDocs(query(ref, limit(maxCount)));
       }
     } catch (_) {
@@ -417,7 +437,7 @@ export async function fetchNoticesCleaned(maxCount: number = 20): Promise<Notice
     }
   }
   const out: Notice[] = [];
-  snap.forEach((doc) => {
+  for (const doc of snap.docs as unknown as Array<QueryDocumentSnapshot<DocumentData>>) {
     const d = doc.data() as any;
     const rawTitle: string = d?.title ?? "";
     const rawContentHtml: string = d?.content_html ?? "";
@@ -457,11 +477,11 @@ export async function fetchNoticesCleaned(maxCount: number = 20): Promise<Notice
       createdAt: d?.createdAt ?? null,
       updatedAt: d?.updatedAt ?? null,
     });
-  });
+  }
   return out;
 }
 
-// 샘플: 3건만 조회해 정제 및 로그 출력
+// 샘플: 15건만 조회해 정제 및 로그 출력
 export async function fetchNoticesSample(): Promise<Notice[]> {
   return fetchNoticesCleaned(15);
 }
