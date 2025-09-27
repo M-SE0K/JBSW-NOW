@@ -65,7 +65,7 @@ export default function Home() {
 
       {/* 검색 결과 또는 인기소식 목록 */}
       <View style={styles.content}>
-        {!isSearching && <SectionHeader title="새로운 인기 소식" showMore={false} style={{ marginTop: 0 }} />}
+        {!isSearching && <SectionHeader title="새로운 인기 소식" showMore={false} style={{ paddingHorizontal: 16 }} />}
         {isSearching ? (
           // 검색 결과
           <View style={styles.searchResults}>
@@ -127,8 +127,6 @@ const styles = {
   },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 20,
   },
   searchResults: {
     flex: 1,
