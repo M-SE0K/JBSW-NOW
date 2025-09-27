@@ -52,13 +52,7 @@ export default function RootLayout() {
                 tabBarIcon: ({ color, size }) => (
                   <Ionicons name="bookmark-outline" color={color} size={size} />
                 ),
-                headerTitle: () => (
-                  <AppHeaderTitle color={colorScheme === "dark" ? "#fff" : "#125"} />
-                ),
-                headerTitleAlign: "left",
-                headerRight: () => (
-                  <AppHeaderRight iconColor={colorScheme === "dark" ? "#fff" : "#111"} />
-                ),
+                headerShown: false,
               }}
             />
 
@@ -70,41 +64,19 @@ export default function RootLayout() {
                 tabBarIcon: ({ color, size }) => (
                   <Ionicons name="flame-outline" color={color} size={size} />
                 ),
-                headerTitle: () => {
-                  const headerColor = colorScheme === "dark" ? "#fff" : "#125";
-                  return (
-                    <Text style={[HEADER_TITLE_BASE_STYLE, { color: headerColor }]} numberOfLines={1}>
-                      {HEADER_TITLE_TEXT}
-                    </Text>
-                  );
-                },
-                headerTitleAlign: "left",
-                headerRight: () => {
-                  const iconColor = colorScheme === "dark" ? "#fff" : "#111";
-                  return (
-                    <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}>
-                      <Link href="/search" asChild>
-                        <Pressable accessibilityLabel="search">
-                          <Ionicons name="search-outline" color={iconColor} size={24} />
-                        </Pressable>
-                      </Link>
-                      <Link href="/notification" asChild>
-                        <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
-                          <Ionicons name="notifications-outline" color={iconColor} size={24} />
-                        </Pressable>
-                      </Link>
-                      <Pressable accessibilityLabel="menu" style={{ marginLeft: 18 }}>
-                        <Ionicons name="menu-outline" color={iconColor} size={24} />
-                      </Pressable>
-                    </View>
-                  );
-                },
+                headerShown: false,
               }}
             />
             {/* 탭은 3개만 노출: 나머지 라우트는 탭 바에서 숨김 */}
             <Tabs.Screen name="(modals)/filters" options={{ href: null }} />
             <Tabs.Screen name="chat/index" options={{ href: null }} />
-            <Tabs.Screen name="events/index" options={{ href: null }} />
+            <Tabs.Screen 
+              name="events/index" 
+              options={{ 
+                href: null,
+                headerShown: false 
+              }} 
+            />
             <Tabs.Screen name="events/[id]" options={{ href: null }} />
             <Tabs.Screen name="orgs/index" options={{ href: null }} />
             <Tabs.Screen name="orgs/[orgId]" options={{ href: null }} />
