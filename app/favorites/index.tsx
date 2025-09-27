@@ -17,6 +17,7 @@ export default function FavoritesScreen() {
   const [allItems, setAllItems] = useState<Event[]>([]);
   const [favEvents, setFavEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // 초기 데이터 로드 + 즐겨찾기 구독
   useEffect(() => {
@@ -92,6 +93,40 @@ export default function FavoritesScreen() {
     const base = filterByFavorites(allItems);
     const filtered = searchByAllWords<Event>(base, q, ["title", "summary"] as any);
     setFavEvents(filtered as Event[]);
+  };
+
+  const reloadFavorites = async () => {
+    setRefreshing(true);
+    try {
+      await ensureUserId();
+      const notices = await fetchNoticesCleaned(1000);
+      const mapped: Event[] = (notices || []).map((n: any): Event => ({
+        id: `notice-${n.id}`,
+        title: n.title,
+        summary: n.content ? String(n.content).slice(0, 200) : null,
+        startAt: deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at),
+        endAt: null,
+        location: null,
+        tags: ["공지"],
+        org: { id: "notice", name: n.author || "공지", logoUrl: null },
+        sourceUrl: n.url || null,
+        posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
+        ai: null,
+      }));
+      setAllItems(mapped);
+      const base = filterByFavorites(mapped);
+      const q = normalize(searchQuery);
+      if (isSearching && q) {
+        const filtered = searchByAllWords<Event>(base, q, ["title", "summary"] as any);
+        setFavEvents(filtered as Event[]);
+      } else {
+        setFavEvents(base);
+      }
+    } catch (e) {
+      console.warn("[FAV] reload error", e);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleRecentSearchPress = async (query: string) => {
@@ -177,6 +212,8 @@ export default function FavoritesScreen() {
                 onPressItem={(ev) => {
                   console.log("[UI] favorite event press", ev.id);
                 }}
+                refreshing={refreshing}
+                onRefresh={reloadFavorites}
               />
             ) : (
               <View style={styles.emptyState}>

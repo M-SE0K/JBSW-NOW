@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, useColorScheme, TouchableOpacity, Linking } from "react-native";
 import { isFavorite, toggleFavorite, subscribe, ensureUserId } from "../services/favorites";
+import { incrementHotClick } from "../services/hot";
 import { cleanCrawledText } from "../utils/textCleaner";
 import { Event } from "../types";
 import { formatDateTime } from "../utils/date";
@@ -29,6 +30,8 @@ export const EventCard = ({ event, onPress }: Props) => {
         console.warn("[UI] cannot open url", url);
         return;
       }
+      // 인기글 카운트 증가
+      await incrementHotClick({ key: event.id, title: String(event.title || ""), sourceUrl: event.sourceUrl || null, posterImageUrl: event.posterImageUrl || null });
       await Linking.openURL(url);
     } catch (e) {
       console.warn("[UI] openURL error", e);
