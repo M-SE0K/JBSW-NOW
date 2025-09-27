@@ -88,6 +88,13 @@ export default function RootLayout() {
               }} 
             />
             <Tabs.Screen 
+              name="notification/settings" 
+              options={{ 
+                href: null,
+                headerShown: false 
+              }} 
+            />
+            <Tabs.Screen 
               name="search/index" 
               options={{ 
                 href: null,
