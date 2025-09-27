@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, StyleSheet, TextInput, Pressable, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TextInput, Pressable, FlatList, ActivityIndicator, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import type { Event } from "../../src/types";
@@ -18,6 +20,8 @@ export default function FavoritesScreen() {
   const [favEvents, setFavEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const RECENT_KEY = "recentSearches"; // 검색 화면과 공유
+  const [showRecent, setShowRecent] = useState(false);
 
   // 초기 데이터 로드 + 즐겨찾기 구독
   useEffect(() => {
@@ -62,12 +66,20 @@ export default function FavoritesScreen() {
     loadRecentSearches();
   }, []);
 
+  // 탭 전환 등 포커스 시 동기화
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log("[FAV-SEARCH] focus reload");
+      loadRecentSearches();
+    }, [])
+  );
+
   const loadRecentSearches = async () => {
     try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        const v = window.localStorage.getItem("favoritesRecentSearches");
-        setRecentSearches(v ? JSON.parse(v) : []);
-      }
+      const saved = await AsyncStorage.getItem(RECENT_KEY);
+      const parsed = saved ? (JSON.parse(saved) as string[]) : [];
+      console.log("[FAV-SEARCH] loadRecent", { count: parsed.length, items: parsed });
+      setRecentSearches(parsed);
     } catch (error) {
       console.error("최근 검색어 로드 실패:", error);
     }
@@ -81,13 +93,12 @@ export default function FavoritesScreen() {
       return;
     }
     try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        const current = window.localStorage.getItem("favoritesRecentSearches");
-        const arr = current ? (JSON.parse(current) as string[]) : [];
-        const updated = [q, ...arr.filter((x) => x !== q)].slice(0, 10);
-        window.localStorage.setItem("favoritesRecentSearches", JSON.stringify(updated));
-        setRecentSearches(updated);
-      }
+      const beforeRaw = await AsyncStorage.getItem(RECENT_KEY);
+      const before = beforeRaw ? (JSON.parse(beforeRaw) as string[]) : [];
+      const updated = [q, ...before.filter((x) => x !== q)].slice(0, 10);
+      await AsyncStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+      console.log("[FAV-SEARCH] save", { query: q, before: before.length, after: updated.length });
+      setRecentSearches(updated);
     } catch {}
     setIsSearching(true);
     const base = filterByFavorites(allItems);
@@ -130,6 +141,7 @@ export default function FavoritesScreen() {
   };
 
   const handleRecentSearchPress = async (query: string) => {
+    console.log("[FAV-SEARCH] press", { query });
     setSearchQuery(query);
     setIsSearching(false);
     setTimeout(() => handleSearch(), 0);
@@ -137,9 +149,8 @@ export default function FavoritesScreen() {
 
   const handleClearRecent = async () => {
     try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.removeItem("favoritesRecentSearches");
-      }
+      await AsyncStorage.removeItem(RECENT_KEY);
+      console.log("[FAV-SEARCH] clearAll");
       setRecentSearches([]);
     } catch (error) {
       console.error("최근 검색어 삭제 실패:", error);
@@ -183,7 +194,8 @@ export default function FavoritesScreen() {
             placeholder="즐겨찾기 검색"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
+            onFocus={() => { setShowRecent(true); loadRecentSearches(); }}
+            onSubmitEditing={() => { setShowRecent(false); handleSearch(); }}
             returnKeyType="search"
           />
         </View>
@@ -191,8 +203,50 @@ export default function FavoritesScreen() {
 
       {/* 검색 결과 또는 즐겨찾기 목록 */}
       <View style={styles.content}>
-        {!isSearching && <SectionHeader title="즐겨찾기" showMore={false} style={{ paddingHorizontal: 16 }} />}
-        {true ? (
+        {showRecent && (
+          <Pressable
+            style={styles.overlay}
+            onPress={() => { setShowRecent(false); Keyboard.dismiss(); }}
+          />
+        )}
+        {!isSearching && (
+          <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+            {showRecent && (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>최근 검색어</Text>
+                {recentSearches.length > 0 && (
+                  <Pressable onPress={handleClearRecent}>
+                    <Text style={styles.clearButton}>전체삭제</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+            {showRecent && recentSearches.length > 0 ? (
+              <View style={styles.chipsContainer}>
+                {recentSearches.map((item, index) => (
+                  <View key={`${item}-${index}`} style={styles.chip}>
+                    <Pressable style={styles.chipTextWrap} onPress={() => handleRecentSearchPress(item)}>
+                      <Text style={styles.chipText} numberOfLines={1}>{item}</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.chipClose}
+                      hitSlop={8}
+                      onPress={async () => {
+                        const updated = recentSearches.filter((s) => s !== item);
+                        setRecentSearches(updated);
+                        try { await AsyncStorage.setItem(RECENT_KEY, JSON.stringify(updated)); } catch {}
+                      }}
+                    >
+                      <Ionicons name="close" size={16} color="#666" />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            <SectionHeader title="즐겨찾기" showMore={false} />
+          </View>
+        )}
+        {isSearching ? (
           // 검색 결과
           <View style={styles.searchResults}>
             {false ? (
@@ -277,6 +331,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "transparent",
+    zIndex: 1,
+  },
   searchResults: {
     flex: 1,
   },
@@ -294,6 +357,34 @@ const styles = StyleSheet.create({
   clearButton: {
     fontSize: 14,
     color: "#007AFF",
+  },
+  chipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginRight: 10,
+    marginBottom: 12,
+  },
+  chipTextWrap: {
+    maxWidth: 200,
+  },
+  chipText: {
+    fontSize: 16,
+    color: "#000",
+  },
+  chipClose: {
+    marginLeft: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   recentItem: {
     flexDirection: "row",
