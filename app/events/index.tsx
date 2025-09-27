@@ -54,6 +54,18 @@ export default function EventsScreen() {
     })();
   }, []);
 
+  // 현재 렌더링 중인 목록의 상위 3개(title/summary/id) 로그
+  useEffect(() => {
+    const items = isSearching ? searchResults : news;
+    const preview = (items || []).slice(0, 3).map((it: any, idx: number) => ({
+      idx: idx + 1,
+      id: it?.id,
+      title: typeof it?.title === "string" ? it.title.slice(0, 80) : it?.title,
+      summary: typeof it?.summary === "string" ? it.summary.slice(0, 200) : it?.summary,
+    }));
+    console.log("[events] preview", preview);
+  }, [isSearching, news, searchResults]);
+
   function deriveIsoDate(input?: string | null): string {
     if (!input || typeof input !== "string") return new Date().toISOString();
     const s = input.trim();
