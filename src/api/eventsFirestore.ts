@@ -85,7 +85,6 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
 export async function searchHotNews(searchTerm: string, maxCount: number = 20): Promise<Event[]> {
   const db = getFirestore();
   const eventsRef = collection(db, "events");
-<<<<<<< HEAD
   const q = query(eventsRef, orderBy("createdAt", "desc"), limit(maxCount));
   const snap = await getDocs(q);
   const out: Event[] = [];
@@ -120,7 +119,6 @@ export async function searchHotNews(searchTerm: string, maxCount: number = 20): 
     } as Event);
   });
   return out;
-=======
 
   // Firestore에서 제목이나 요약에 검색어가 포함된 이벤트를 가져옵니다
   const firestoreQuery = query(
@@ -239,26 +237,107 @@ export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
 // 새로운 소식 모의 데이터
 function getMockRecentNews(): Event[] {
   return [
-    {
-      id: "mock_news_1",
-      title: "2024년 전북대학교 SW경진대회 개최 안내",
-      summary: "전북대학교 소프트웨어공학과에서 주최하는 2024년 SW경진대회가 개최됩니다. 많은 학생들의 참여를 기다립니다.",
-      startAt: "2024-10-15T09:00:00Z",
-      endAt: "2024-10-15T18:00:00Z",
-      location: "전북대학교 공학관 101호",
-      tags: ["SW경진대회", "전북대학교", "프로그래밍"],
-      org: {
-        id: "org_jbnu",
-        name: "전북대학교 SW사업단",
-        logoUrl: null,
-        homepageUrl: "https://sw.jbnu.ac.kr"
-      },
-      sourceUrl: null,
-      posterImageUrl: null,
-      ai: null,
-    }
+    // {
+    //   id: "",
+    //   title: "",
+    //   startAt: "",
+    //   org: {
+    //     id: "",
+    //     name: "",
+    //     logoUrl: null,
+    //     homepageUrl: undefined
+    //   }
+    // }
   ];
->>>>>>> main
+}
+
+
+// notices 컬렉션: 원문(title/content) 정제 전/후 로그와 함께 정제 결과 반환
+export type Notice = {
+  id: string;
+  title: string; // 정제된 제목
+  content: string; // 정제된 본문(plain text)
+  url?: string | null; // 원문 URL
+  author?: string | null;
+  category?: string | null;
+  date?: string | null;
+  crawled_at?: string | null;
+  firebase_created_at?: string | null;
+  firebase_updated_at?: string | null;
+  image_urls?: string[] | null;
+  attachments?: string | null; // 예: "3"
+  views?: string | null;
+  createdAt?: any;
+  updatedAt?: any;
+};
+
+export async function fetchNoticesCleaned(maxCount: number = 20): Promise<Notice[]> {
+  const db = getFirestore();
+  const ref = collection(db, "notices");
+
+  // 1차: createdAt(Timestamp) 기준 정렬 시도
+  let snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount)));
+  if (snap.empty) {
+    // 2차: firebase_created_at(ISO 문자열) 기준 정렬 시도
+    try {
+      snap = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount)));
+      if (snap.empty) {
+        // 3차: 정렬 없이 제한만
+        snap = await getDocs(query(ref, limit(maxCount)));
+      }
+    } catch (_) {
+      // 필드 미존재 등으로 실패 시, 정렬 없이 재시도
+      snap = await getDocs(query(ref, limit(maxCount)));
+    }
+  }
+  const out: Notice[] = [];
+  snap.forEach((doc) => {
+    const d = doc.data() as any;
+    const rawTitle: string = d?.title ?? "";
+    const rawContentHtml: string = d?.content_html ?? "";
+    const rawContentText: string = d?.content ?? "";
+    const rawContent: string = rawContentHtml || rawContentText;
+
+    // 정제: 스크립트/스타일/불필요 태그 제거 + 엔티티 디코드
+    const cleanedTitle = cleanCrawledText(rawTitle, { maxLength: 300 });
+    const cleanedContent = (() => {
+      if (/<TEXT>|<JSON>/i.test(rawContent)) {
+        const { text } = formatRowTextForPost(rawContent);
+        return cleanCrawledText(text, { maxLength: 10000 });
+      }
+      return cleanCrawledText(rawContent, { maxLength: 10000 });
+    })();
+
+    // 로그: 정제 전/후 프리뷰(200자)
+    console.log("[NOTICE] raw.title:", String(rawTitle).slice(0, 200));
+    console.log("[NOTICE] raw.content:", String(rawContent).slice(0, 200));
+    console.log("[NOTICE] cleaned.title:", cleanedTitle.slice(0, 200));
+    console.log("[NOTICE] cleaned.content:", cleanedContent.slice(0, 200));
+
+    out.push({
+      id: doc.id,
+      title: cleanedTitle,
+      content: cleanedContent,
+      url: d?.url ?? null,
+      author: d?.author ?? null,
+      category: d?.category ?? null,
+      date: d?.date ?? null,
+      crawled_at: d?.crawled_at ?? null,
+      firebase_created_at: d?.firebase_created_at ?? null,
+      firebase_updated_at: d?.firebase_updated_at ?? null,
+      image_urls: Array.isArray(d?.image_urls) ? d.image_urls : null,
+      attachments: d?.attachments ?? null,
+      views: d?.views ?? null,
+      createdAt: d?.createdAt ?? null,
+      updatedAt: d?.updatedAt ?? null,
+    });
+  });
+  return out;
+}
+
+// 샘플: 3건만 조회해 정제 및 로그 출력
+export async function fetchNoticesSample(): Promise<Notice[]> {
+  return fetchNoticesCleaned(15);
 }
 
 
