@@ -26,8 +26,8 @@ export const BannerSlider = ({ limit = 10, onPressItem }: Props) => {
         console.log("[UI] BannerSlider:fetch start", { limit });
         const notices = await fetchRecentNoticeBanners(limit);
         const onlyNotices = notices.filter(d => !!d.posterImageUrl);
-        console.log("[UI] BannerSlider:fetch done (notices only)", { notices: notices.length, used: onlyNotices.length });
-        console.log("[UI] BannerSlider:items preview", onlyNotices.slice(0, 5).map((m) => ({ id: m.id, posterImageUrl: m.posterImageUrl })));
+        //console.log("[UI] BannerSlider:fetch done (notices only)", { notices: notices.length, used: onlyNotices.length });
+        //console.log("[UI] BannerSlider:items preview", onlyNotices.slice(0, 5).map((m) => ({ id: m.id, posterImageUrl: m.posterImageUrl })));
         if (mounted) setItems(onlyNotices.slice(0, limit));
       } finally {
         if (mounted) setLoading(false);
@@ -41,9 +41,9 @@ export const BannerSlider = ({ limit = 10, onPressItem }: Props) => {
     const timer = setInterval(() => {
       setIndex((prev) => {
         const next = (prev + 1) % items.length;
-        if (next !== prev) {
-          console.log("[UI] BannerSlider:auto-advance", { from: prev, to: next, total: items.length });
-        }
+        // if (next !== prev) {
+        //   console.log("[UI] BannerSlider:auto-advance", { from: prev, to: next, total: items.length });
+        // }
         scrollRef.current?.scrollTo({ x: next * ITEM_WIDTH, animated: true });
         return next;
       });
@@ -73,9 +73,9 @@ export const BannerSlider = ({ limit = 10, onPressItem }: Props) => {
         showsHorizontalScrollIndicator={false}
         onScroll={(e) => {
           const i = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
-          if (i !== index) {
-            console.log("[UI] BannerSlider:scroll", { from: index, to: i });
-          }
+          // if (i !== index) {
+          //   //console.log("[UI] BannerSlider:scroll", { from: index, to: i });
+          // }
           setIndex(i);
         }}
         scrollEventThrottle={16}
