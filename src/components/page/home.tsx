@@ -1,6 +1,7 @@
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, ScrollView, useColorScheme } from "react-native";
+import { useRouter } from "expo-router";
 import SectionHeader from "../SectionHeader";
 import BannerSlider from "../BannerSlider";
 import { useEffect, useState } from "react";
@@ -8,11 +9,16 @@ import { fetchRecentNews } from "../../api/eventsFirestore";
 import EventsList from "../EventsList";
 
 export default function Home() {
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const placeholder = colorScheme === "dark" ? "#2B2F33" : "#E4EAEE";
   const textColor = colorScheme === "dark" ? "#fff" : "#111";
   const subText = colorScheme === "dark" ? "#C8CDD2" : "#6B7280";
   const [news, setNews] = useState<any[]>([]);
+
+  const handleMorePress = () => {
+    router.push("/events");
+  };
 
   useEffect(() => {
     (async () => {
@@ -26,7 +32,7 @@ export default function Home() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["left", "right", "bottom"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["left", "right", "bottom"]}>
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: 24 }}
@@ -41,7 +47,7 @@ export default function Home() {
 
         {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
 
-        <SectionHeader title="새로운 소식" />
+        <SectionHeader title="새로운 소식" onPressMore={handleMorePress} />
 
         <EventsList
           events={news as any}
