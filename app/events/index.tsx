@@ -10,6 +10,7 @@ import EmptyState from "../../src/components/EmptyState";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
+import { enrichEventsWithTags } from "../../src/services/tags";
 import { normalize, tokenize, searchByAllWords } from "../../src/services/search";
 import { Event } from "../../src/types";
 import { useRouter } from "expo-router";
@@ -27,7 +28,7 @@ export default function EventsScreen() {
     (async () => {
       try {
         const notices = await fetchNoticesCleaned(1000);
-        const noticeAsEvents = (notices || []).map((n: any) => {
+        const noticeAsEventsRaw = (notices || []).map((n: any) => {
           const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
           return {
             id: `notice-${n.id}`,
@@ -36,7 +37,7 @@ export default function EventsScreen() {
             startAt: startAtIso,
             endAt: null,
             location: null,
-            tags: ["공지"],
+            tags: [],
             org: { id: "notice", name: n.author || "공지", logoUrl: null },
             sourceUrl: n.url || null,
             posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
@@ -44,9 +45,10 @@ export default function EventsScreen() {
           } as any;
         });
 
+        const noticeAsEvents = await enrichEventsWithTags(noticeAsEventsRaw as any);
         noticeAsEvents.sort((a: any, b: any) => (toDateMsFromString(b.startAt) - toDateMsFromString(a.startAt)));
         setAllItems(noticeAsEvents);
-        setNews(noticeAsEvents.slice(0, 100));
+        setNews(noticeAsEvents.slice(0, 5));
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
         setNews([]);

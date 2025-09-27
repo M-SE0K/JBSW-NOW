@@ -6,12 +6,12 @@ import { formatRowTextForPost, cleanCrawledText } from "../utils/textCleaner";
 /**
  * Firestore에서 최근 14일 이내 생성된 이벤트 중 포스터 이미지가 있는 문서를 가져옵니다.
  * - 입력: 최대 건수(maxCount)
- * - 필터: createdAt >= (현재 - 14일), posterImageUrl 존재
- * - 정렬: createdAt DESC
+ * - 필터: date >= (현재 - 14일), posterImageUrl 존재
+ * - 정렬: date DESC
  *
  * 주의(파이어스토어 제약):
  * - 범위 필터(<, <=, >, >=, !=, not-in)는 단일 필드에만 허용됩니다.
- *   본 쿼리는 createdAt(>=)과 posterImageUrl(!=) 두 필드에 범위 필터가 있어
+ *   본 쿼리는 date(>=)과 posterImageUrl(!=) 두 필드에 범위 필터가 있어
  *   프로젝트/인덱스와 환경에 따라 에러가 발생할 수 있습니다.
  *   문제가 된다면 posterImageUrl 필터를 exists 체크 방식(예: '>' "")으로 바꾸거나,
  *   데이터 모델을 변경(저장 시 flag 필드 추가)하는 방식을 고려하세요.
@@ -27,7 +27,7 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
   const fourteenDaysAgo = Timestamp.fromMillis(now.toMillis() - 14 * 24 * 60 * 60 * 1000);
 
   // Firestore 제약으로 하나의 쿼리에서 여러 필드에 부등호/범위 필터를 함께 사용할 수 없습니다.
-  // createdAt 범위 필터만 사용하고, posterImageUrl 존재 여부는 클라이언트에서 후처리합니다.
+  // date 범위 필터만 사용하고, posterImageUrl 존재 여부는 클라이언트에서 후처리합니다.
   // 충분한 수집을 위해 쿼리 limit을 여유 있게 늘린 뒤(slice) 반환합니다.
   const q = query(
     eventsRef,
@@ -505,7 +505,7 @@ export async function fetchNoticesCleaned(maxCount: number = 20): Promise<Notice
     try {
       snap = await getDocs(query(ref, orderBy("dateSort", "desc"), limit(maxCount)));
     } catch {
-      // 2차: date(Timestamp) 기준 정렬 시도
+      // 2차: createdAt(Timestamp) 기준 정렬 시도
       snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount)));
     }
   }

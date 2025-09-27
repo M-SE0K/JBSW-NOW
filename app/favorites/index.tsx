@@ -9,6 +9,7 @@ import EventsList from "../../src/components/EventsList";
 import type { Event } from "../../src/types";
 import { ensureUserId, getFavorites as getFavIds, subscribe } from "../../src/services/favorites";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
+import { enrichEventsWithTags } from "../../src/services/tags";
 import { searchByAllWords, normalize } from "../../src/services/search";
 
 
@@ -29,20 +30,21 @@ export default function FavoritesScreen() {
     (async () => {
       try {
         await ensureUserId();
-        const notices = await fetchNoticesCleaned(1000);
-        const mapped: Event[] = (notices || []).map((n: any): Event => ({
+        const notices = await fetchNoticesCleaned(10);
+        const mappedRaw: Event[] = (notices || []).map((n: any): Event => ({
           id: `notice-${n.id}`,
           title: n.title,
           summary: n.content ? String(n.content).slice(0, 200) : null,
           startAt: deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at),
           endAt: null,
           location: null,
-          tags: ["공지"],
+          tags: [],
           org: { id: "notice", name: n.author || "공지", logoUrl: null },
           sourceUrl: n.url || null,
           posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
           ai: null,
         }));
+        const mapped = await enrichEventsWithTags(mappedRaw as any);
         if (!mounted) return;
         setAllItems(mapped);
         const filtered = filterByFavorites(mapped);
@@ -111,19 +113,20 @@ export default function FavoritesScreen() {
     try {
       await ensureUserId();
       const notices = await fetchNoticesCleaned(1000);
-      const mapped: Event[] = (notices || []).map((n: any): Event => ({
+      const mappedRaw: Event[] = (notices || []).map((n: any): Event => ({
         id: `notice-${n.id}`,
         title: n.title,
         summary: n.content ? String(n.content).slice(0, 200) : null,
         startAt: deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at),
         endAt: null,
         location: null,
-        tags: ["공지"],
+        tags: [],
         org: { id: "notice", name: n.author || "공지", logoUrl: null },
         sourceUrl: n.url || null,
         posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
         ai: null,
       }));
+      const mapped = await enrichEventsWithTags(mappedRaw as any);
       setAllItems(mapped);
       const base = filterByFavorites(mapped);
       const q = normalize(searchQuery);
