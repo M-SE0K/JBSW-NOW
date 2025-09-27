@@ -1,6 +1,7 @@
 import "../db/firebase";
 import { getFirestore, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import type { ContestFromImage, GeminiAnalysisResult, Org } from "../types";
+import { cleanCrawledText } from "../utils/textCleaner";
 
 /**
  * Firestore 저장 전담 모듈(eventsStore)
@@ -22,6 +23,7 @@ export type SaveEventParams = {
   tags: string[];
   org: Org;
   posterImageUrl?: string | null;
+  postTitle?: string | null;
 };
 
 /**
@@ -34,13 +36,23 @@ export async function saveEventToFirestore(params: SaveEventParams): Promise<str
   const db = getFirestore();
   const ex: ContestFromImage | undefined = params.analysis.extracted;
 
-  const title = ex?.title || deriveTitle(params.analysis.rawText);
-  const summary = ex?.summary || trimSummary(params.analysis.rawText, 300);
+  const cleanedRaw = cleanCrawledText(params.analysis.rawText);
+  const title = ex?.title || deriveTitle(cleanedRaw);
+  const summary = ex?.summary || trimSummary(cleanedRaw, 300);
   const startAt = ex?.eventStart || null;
   const endAt = ex?.eventEnd || null;
 
+  // postTitle 파생: 제공값 → AI 산출 → 로컬 유도 (기관명/카테고리/마감일)
+  const category = deriveCategory(ex, cleanedRaw, params.tags);
+  const deadline = ex?.applyEnd || ex?.eventEnd || ex?.eventStart || deriveDeadlineFromText(cleanedRaw);
+  const derivedOrg = deriveOrgName(params.org?.name || "", cleanedRaw);
+  const localPostTitle = derivedOrg && deadline ? `${derivedOrg} (${category}) ${deadline}` : null;
+  const finalPostTitle = params.postTitle ?? ex?.postTitle ?? localPostTitle ?? null;
+  if (finalPostTitle) console.log("[DB] saveEvent postTitle:", finalPostTitle);
+
   const docData = {
     title,
+    postTitle: finalPostTitle,
     summary,
     startAt,
     endAt,
@@ -54,7 +66,7 @@ export async function saveEventToFirestore(params: SaveEventParams): Promise<str
     org: params.org,
     sourceUrl: params.sourceUrl,
     ai: {
-      rawText: params.analysis.rawText,
+      rawText: cleanedRaw,
       extracted: ex ?? null,
       model: "gemini-2.0-flash-lite",
       processedAt: serverTimestamp(),
@@ -81,6 +93,88 @@ function deriveTitle(raw: string): string {
 function trimSummary(raw: string, max: number): string {
   const t = (raw || "").replace(/\s+/g, " ").trim();
   return t.length > max ? t.slice(0, max - 3) + "..." : t;
+}
+
+// 간단 카테고리 파생: 태그/문맥 기반
+function deriveCategory(ex: ContestFromImage | undefined, raw: string, tags: string[]): string {
+  const text = (raw || "") + " " + JSON.stringify(ex || {});
+  const lc = text.toLowerCase();
+  if (tags.includes("career") || /채용|채용공고|신입|정규직|인턴/.test(text)) return "채용정보";
+  if (tags.includes("contest") || /공모전|경진대회|해커톤/.test(text)) return "공모전";
+  if (/해커톤/.test(text)) return "해커톤";
+  if (tags.includes("seminar") || /세미나|강연|설명회|설명/.test(text)) return "학습";
+  return "정보";
+}
+
+// 간단 기관명 파생: 괄호/특수기호 제거 후 앞쪽 어절에서 기업/기관 후보 추출
+function deriveOrgName(orgName: string, raw: string): string | null {
+  const candidates: string[] = [];
+  if (orgName) candidates.push(orgName);
+  const lines = (raw || "").split(/\n+/).slice(0, 6);
+  // 우선순위 1) 대괄호 안 회사/기관명
+  for (const line of lines) {
+    const mBr = line.match(/\[\s*([가-힣A-Za-z0-9·&()]+)\s*\]/);
+    if (mBr && mBr[1]) {
+      candidates.push(mBr[1]);
+      break;
+    }
+  }
+  for (const line of lines) {
+    const cleanLine = line.replace(/^\[[^\]]*\]\s*/, "");
+    const m = cleanLine.match(/^(?:\(주\)|㈜)?\s*([가-힣A-Za-z0-9·&()]{2,}(?:\s*[가-힣A-Za-z0-9·&()]{0,})?)/);
+    if (m) candidates.push(m[1].trim());
+  }
+  const cleaned = candidates
+    .map((s) => s.replace(/[\[\]"'<>]/g, "").replace(/\s{2,}/g, " ").trim())
+    .filter(Boolean);
+  return cleaned[0] || null;
+}
+
+// 텍스트에서 YYYY.MM.DD 또는 YY.MM.DD/ MM.DD 등의 날짜를 찾아 마감일 후보를 반환(YYYY-MM-DD)
+function deriveDeadlineFromText(raw: string): string | null {
+  const text = raw || "";
+  // 연도 포함 전체 날짜
+  const fullDateRe = /(20\d{2})[\.\/-](\d{1,2})[\.\/-](\d{1,2})/g;
+  const foundFull: Array<{ y: number; m: number; d: number; idx: number }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = fullDateRe.exec(text))) {
+    foundFull.push({ y: parseInt(m[1], 10), m: parseInt(m[2], 10), d: parseInt(m[3], 10), idx: m.index });
+  }
+  // 월.일 형태(연도 없음)
+  const mdRe = /(\d{1,2})[\.\/-](\d{1,2})/g;
+  const foundMD: Array<{ m: number; d: number; idx: number }> = [];
+  while ((m = mdRe.exec(text))) {
+    // 이미 fullDate로 잡힌 패턴은 제외
+    const seg = m[0];
+    if (/20\d{2}/.test(seg)) continue;
+    foundMD.push({ m: parseInt(m[1], 10), d: parseInt(m[2], 10), idx: m.index });
+  }
+
+  // 마감 후보: 물결(~) 뒤쪽 날짜 또는 마지막 등장 날짜
+  const waveIdx = text.indexOf("~");
+  let y = (foundFull[0]?.y) || new Date().getFullYear();
+  let target: { y: number; m: number; d: number } | null = null;
+  const pick = (arr: Array<{ y?: number; m: number; d: number; idx: number }>) => {
+    if (!arr.length) return null;
+    let cand = arr[arr.length - 1];
+    if (waveIdx >= 0) {
+      const after = arr.filter((x) => x.idx > waveIdx);
+      if (after.length) cand = after[after.length - 1];
+    }
+    return cand;
+  };
+
+  if (foundFull.length) {
+    const cand = pick(foundFull);
+    if (cand) target = { y: cand.y!, m: cand.m, d: cand.d };
+  } else if (foundMD.length) {
+    const cand = pick(foundMD);
+    if (cand) target = { y, m: cand.m, d: cand.d };
+  }
+  if (!target) return null;
+  const mm = String(Math.max(1, Math.min(12, target.m))).padStart(2, "0");
+  const dd = String(Math.max(1, Math.min(31, target.d))).padStart(2, "0");
+  return `${target.y}-${mm}-${dd}`;
 }
 
 

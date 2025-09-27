@@ -88,9 +88,11 @@ export default function RootLayout() {
                           <Ionicons name="search-outline" color={iconColor} size={24} />
                         </Pressable>
                       </Link>
-                      <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
-                        <Ionicons name="notifications-outline" color={iconColor} size={24} />
-                      </Pressable>
+                      <Link href="/notification" asChild>
+                        <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
+                          <Ionicons name="notifications-outline" color={iconColor} size={24} />
+                        </Pressable>
+                      </Link>
                       <Pressable accessibilityLabel="menu" style={{ marginLeft: 18 }}>
                         <Ionicons name="menu-outline" color={iconColor} size={24} />
                       </Pressable>
@@ -107,14 +109,36 @@ export default function RootLayout() {
             <Tabs.Screen name="orgs/index" options={{ href: null }} />
             <Tabs.Screen name="orgs/[orgId]" options={{ href: null }} />
             <Tabs.Screen 
+              name="notification/index" 
+              options={{ 
+                href: null,
+                headerShown: false 
+              }} 
+            />
+            <Tabs.Screen 
               name="search/index" 
               options={{ 
                 href: null,
                 headerShown: false 
               }} 
             />
-            {/* 테스트 라우트(탭 비노출) */}
-            <Tabs.Screen name="test/local-image" options={{ href: null }} />
+            {/* 테스트 라우트 */}
+            <Tabs.Screen
+              name="test/local-image"
+              options={{
+                title: "",
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="image-outline" color={color} size={size} />
+                ),
+                headerTitle: () => (
+                  <AppHeaderTitle color={colorScheme === "dark" ? "#fff" : "#125"} />
+                ),
+                headerTitleAlign: "left",
+                headerRight: () => (
+                  <AppHeaderRight iconColor={colorScheme === "dark" ? "#fff" : "#111"} />
+                ),
+              }}
+            />
             <Tabs.Screen name="test/firebase" options={{ href: null }} />
           </Tabs>
         </QueryProvider>
@@ -130,4 +154,3 @@ const HEADER_TITLE_BASE_STYLE = {
   fontSize: 24,
   fontWeight: "800" as const,
 };
-

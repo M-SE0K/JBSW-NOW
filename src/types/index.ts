@@ -13,6 +13,7 @@ export type EventAI = {
 export type Event = {
   id: string;
   title: string;
+  postTitle?: string | null;
   summary?: string | null;
   startAt: string; // ISO
   endAt?: string | null; // ISO
@@ -51,6 +52,7 @@ export type ContestFromImage = {
   contactEmail?: string;
   contactPhone?: string;
   links?: string[];    // 신청 링크 등
+  postTitle?: string | null; // 생성된 포스트용 제목
 };
 
 export type GeminiAnalysisResult = {
