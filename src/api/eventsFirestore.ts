@@ -81,10 +81,11 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
   }
 }
 
-// 최근 소식(이벤트) 피드: createdAt DESC 상위 N개
-export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
+// 인기소식 검색 함수
+export async function searchHotNews(searchTerm: string, maxCount: number = 20): Promise<Event[]> {
   const db = getFirestore();
   const eventsRef = collection(db, "events");
+<<<<<<< HEAD
   const q = query(eventsRef, orderBy("createdAt", "desc"), limit(maxCount));
   const snap = await getDocs(q);
   const out: Event[] = [];
@@ -119,6 +120,145 @@ export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
     } as Event);
   });
   return out;
+=======
+
+  // Firestore에서 제목이나 요약에 검색어가 포함된 이벤트를 가져옵니다
+  const firestoreQuery = query(
+    eventsRef,
+    orderBy("createdAt", "desc"),
+    limit(maxCount)
+  );
+
+  try {
+    const snap = await getDocs(firestoreQuery);
+    const collected: Event[] = [];
+    
+    snap.forEach((doc) => {
+      const d = doc.data() as any;
+      const title = d.title?.toLowerCase() || "";
+      const summary = d.summary?.toLowerCase() || "";
+      const term = searchTerm.toLowerCase();
+      
+      // 제목이나 요약에 검색어가 포함된 경우만 필터링
+      if (title.includes(term) || summary.includes(term)) {
+        collected.push({
+          id: doc.id,
+          title: d.title,
+          summary: d.summary ?? null,
+          startAt: d.startAt ?? null,
+          endAt: d.endAt ?? null,
+          location: d.location ?? null,
+          tags: d.tags ?? [],
+          org: d.org,
+          sourceUrl: d.sourceUrl ?? null,
+          posterImageUrl: d.posterImageUrl ?? null,
+          ai: d.ai ?? null,
+        } as Event);
+      }
+    });
+    
+    return collected;
+  } catch (err) {
+    console.error("[DB] searchHotNews:error", err);
+    throw err;
+  }
+}
+
+// 인기소식 전용 최근 검색어 관련 함수들
+export async function getHotRecentSearches(): Promise<string[]> {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const stored = window.localStorage.getItem("hotRecentSearches");
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  } catch (error) {
+    console.error("인기소식 최근 검색어 로드 실패:", error);
+    return [];
+  }
+}
+
+export async function saveHotRecentSearch(query: string): Promise<void> {
+  try {
+    const recent = await getHotRecentSearches();
+    const updated = [query, ...recent.filter(item => item !== query)].slice(0, 10);
+    
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem("hotRecentSearches", JSON.stringify(updated));
+    }
+  } catch (error) {
+    console.error("인기소식 최근 검색어 저장 실패:", error);
+  }
+}
+
+export async function clearHotRecentSearches(): Promise<void> {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.removeItem("hotRecentSearches");
+    }
+  } catch (error) {
+    console.error("인기소식 최근 검색어 삭제 실패:", error);
+  }
+}
+
+// 최근 소식(이벤트) 피드: createdAt DESC 상위 N개
+export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
+  try {
+    const db = getFirestore();
+    const eventsRef = collection(db, "events");
+    const q = query(eventsRef, orderBy("createdAt", "desc"), limit(maxCount));
+    const snap = await getDocs(q);
+    const out: Event[] = [];
+    snap.forEach((doc) => {
+      const d = doc.data() as any;
+      out.push({
+        id: doc.id,
+        title: d.title,
+        summary: d.summary ?? null,
+        startAt: d.startAt ?? null,
+        endAt: d.endAt ?? null,
+        location: d.location ?? null,
+        tags: d.tags ?? [],
+        org: d.org,
+        sourceUrl: d.sourceUrl ?? null,
+        posterImageUrl: d.posterImageUrl ?? null,
+        ai: d.ai ?? null,
+      } as Event);
+    });
+    
+    // 항상 모의 데이터와 실제 데이터를 합쳐서 반환
+    const mockData = getMockRecentNews();
+    return [...mockData, ...out];
+  } catch (error) {
+    console.error("[DB] fetchRecentNews:error", error);
+    // 오류 발생 시 모의 데이터 반환
+    return getMockRecentNews();
+  }
+}
+
+// 새로운 소식 모의 데이터
+function getMockRecentNews(): Event[] {
+  return [
+    {
+      id: "mock_news_1",
+      title: "2024년 전북대학교 SW경진대회 개최 안내",
+      summary: "전북대학교 소프트웨어공학과에서 주최하는 2024년 SW경진대회가 개최됩니다. 많은 학생들의 참여를 기다립니다.",
+      startAt: "2024-10-15T09:00:00Z",
+      endAt: "2024-10-15T18:00:00Z",
+      location: "전북대학교 공학관 101호",
+      tags: ["SW경진대회", "전북대학교", "프로그래밍"],
+      org: {
+        id: "org_jbnu",
+        name: "전북대학교 SW사업단",
+        logoUrl: null,
+        homepageUrl: "https://sw.jbnu.ac.kr"
+      },
+      sourceUrl: null,
+      posterImageUrl: null,
+      ai: null,
+    }
+  ];
+>>>>>>> main
 }
 
 
