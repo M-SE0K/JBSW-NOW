@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Event } from "../../src/types";
 import EventCard from "../../src/components/EventCard";
@@ -15,6 +17,7 @@ export default function SearchScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [allItems, setAllItems] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
+  const RECENT_KEY = "recentSearches";
 
   // 최근 검색어 로드 + 데이터 프리로드(메모리)
   useEffect(() => {
@@ -22,12 +25,20 @@ export default function SearchScreen() {
     preloadData();
   }, []);
 
+  // 포커스 시 최근 검색어 재로드(다른 화면에서 변경된 내용 동기화)
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log("[SEARCH] focus reload");
+      loadRecentSearches();
+    }, [])
+  );
+
   const loadRecentSearches = async () => {
     try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        const saved = window.localStorage.getItem("recentSearches");
-        setRecentSearches(saved ? JSON.parse(saved) : []);
-      }
+      const saved = await AsyncStorage.getItem(RECENT_KEY);
+      const parsed = saved ? (JSON.parse(saved) as string[]) : [];
+      console.log("[SEARCH] loadRecentSearches", { savedLength: parsed.length, items: parsed });
+      setRecentSearches(parsed);
     } catch (error) {
       console.error("최근 검색어 로드 실패:", error);
     }
@@ -65,15 +76,12 @@ export default function SearchScreen() {
     }
     // 최근 검색어 저장
     try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        const current = await (async () => {
-          const saved = window.localStorage.getItem("recentSearches");
-          return saved ? (JSON.parse(saved) as string[]) : [];
-        })();
-        const updated = [q, ...current.filter((v) => v !== q)].slice(0, 10);
-        window.localStorage.setItem("recentSearches", JSON.stringify(updated));
-        setRecentSearches(updated);
-      }
+      const beforeRaw = await AsyncStorage.getItem(RECENT_KEY);
+      const before = beforeRaw ? (JSON.parse(beforeRaw) as string[]) : [];
+      const updated = [q, ...before.filter((v) => v !== q)].slice(0, 10);
+      await AsyncStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+      console.log("[SEARCH] saveRecentSearch", { query: q, before: before.length, after: updated.length });
+      setRecentSearches(updated);
     } catch {}
 
     const found = searchByAllWords(allItems as any, q, ["title", "summary"] as any);
@@ -82,6 +90,7 @@ export default function SearchScreen() {
   };
 
   const handleRecentSearchPress = async (query: string) => {
+    console.log("[SEARCH] pressRecentSearch", { query });
     setSearchQuery(query);
     setIsSearching(false);
     setResults([]);
@@ -90,9 +99,8 @@ export default function SearchScreen() {
 
   const handleClearRecent = async () => {
     try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.removeItem("recentSearches");
-      }
+      await AsyncStorage.removeItem(RECENT_KEY);
+      console.log("[SEARCH] clearAllRecent");
       setRecentSearches([]);
     } catch (error) {
       console.error("최근 검색어 삭제 실패:", error);
@@ -142,43 +150,44 @@ export default function SearchScreen() {
             )}
           </View>
         ) : (
-          // 최근 검색어
+          // 최근 검색어 (칩 UI)
           <View>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>최근 검색어</Text>
               {recentSearches.length > 0 && (
                 <Pressable onPress={handleClearRecent}>
-                  <Text style={styles.clearButton}>전체 삭제</Text>
+                  <Text style={styles.clearButton}>전체삭제</Text>
                 </Pressable>
               )}
             </View>
-            
-            {recentSearches.length > 0 && (
-              <FlatList
-                data={recentSearches}
-                keyExtractor={(item, index) => `${item}-${index}`}
-                renderItem={({ item }) => (
-                  <Pressable 
-                    style={styles.recentItem}
-                    onPress={() => handleRecentSearchPress(item)}
-                  >
-                    <Ionicons name="time-outline" size={16} color="#999" />
-                    <Text style={styles.recentText}>{item}</Text>
-                    <Pressable 
+            {recentSearches.length > 0 ? (
+              <View style={styles.chipsContainer}>
+                {recentSearches.map((item, index) => (
+                  <View key={`${item}-${index}`} style={styles.chip}>
+                    <Pressable style={styles.chipTextWrap} onPress={() => handleRecentSearchPress(item)}>
+                      <Text style={styles.chipText} numberOfLines={1}>{item}</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.chipClose}
+                      hitSlop={8}
                       onPress={() => {
-                        const updated = recentSearches.filter(search => search !== item);
+                        const updated = recentSearches.filter((s) => s !== item);
+                        console.log("[SEARCH] removeRecent", { item, before: recentSearches.length, after: updated.length });
                         setRecentSearches(updated);
-                        if (typeof window !== "undefined" && window.localStorage) {
-                          window.localStorage.setItem("recentSearches", JSON.stringify(updated));
-                        }
+                        try {
+                          AsyncStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+                        } catch {}
                       }}
                     >
-                      <Ionicons name="close" size={16} color="#999" />
+                      <Ionicons name="close" size={16} color="#666" />
                     </Pressable>
-                  </Pressable>
-                )}
-                showsVerticalScrollIndicator={false}
-              />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>최근 검색어가 없습니다</Text>
+              </View>
             )}
           </View>
         )}
@@ -235,6 +244,33 @@ const styles = StyleSheet.create({
   clearButton: {
     fontSize: 14,
     color: "#007AFF",
+  },
+  chipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginRight: 10,
+    marginBottom: 12,
+  },
+  chipTextWrap: {
+    maxWidth: 200,
+  },
+  chipText: {
+    fontSize: 16,
+    color: "#000",
+  },
+  chipClose: {
+    marginLeft: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchResults: {
     flex: 1,

@@ -4,6 +4,9 @@ import { View, Text, StyleSheet, Pressable, ScrollView, Switch } from "react-nat
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
+import { ensureUserId, getActiveUserIdSync, hydrateFavorites } from "../../src/services/favorites";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -119,9 +122,30 @@ export default function SettingsScreen() {
           title="캐시 삭제"
           subtitle="저장된 데이터 초기화"
           icon="trash-outline"
-          onPress={() => {
-            // TODO: 캐시 삭제 확인 모달
-            console.log("캐시 삭제");
+          onPress={async () => {
+            try {
+              // 최근 검색어 삭제
+              const recentKey = "recentSearches";
+              const recentBeforeRaw = await AsyncStorage.getItem(recentKey);
+              const recentBefore = recentBeforeRaw ? (JSON.parse(recentBeforeRaw) as string[]) : [];
+              await AsyncStorage.removeItem(recentKey);
+              console.log("[SETTINGS] cleared recent searches", { before: recentBefore.length, after: 0, items: recentBefore });
+
+              // 즐겨찾기 삭제(현재 사용자)
+              await ensureUserId();
+              const uid = getActiveUserIdSync();
+              const favKey = uid ? `favorites_v1_${uid}` : null;
+              let favBefore: string[] = [];
+              if (favKey) {
+                const favBeforeRaw = await SecureStore.getItemAsync(favKey);
+                favBefore = favBeforeRaw ? (JSON.parse(favBeforeRaw) as string[]) : [];
+                await SecureStore.deleteItemAsync(favKey);
+                await hydrateFavorites();
+              }
+              console.log("[SETTINGS] cleared favorites", { userId: uid, before: favBefore.length, after: 0, items: favBefore });
+            } catch (e) {
+              console.warn("[SETTINGS] clear cache error", e);
+            }
           }}
           showArrow={true}
         />
