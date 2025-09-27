@@ -27,7 +27,7 @@ export default function EventsScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const notices = await fetchNoticesCleaned(1000);
+        const notices = await fetchNoticesCleaned(10);
         const noticeAsEventsRaw = (notices || []).map((n: any) => {
           const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
           return {

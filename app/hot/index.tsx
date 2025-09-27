@@ -5,6 +5,8 @@ import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import type { Event } from "../../src/types";
 import { fetchRecentHotTopWithinDays } from "../../src/services/hot";
+import { fetchNoticesCleaned, type Notice } from "../../src/api/eventsFirestore";
+import { normalize } from "../../src/services/search";
 import { subscribe as subscribeFavorites, ensureUserId as ensureFavUser } from "../../src/services/favorites";
 import { enrichEventsWithTags } from "../../src/services/tags";
 
@@ -14,12 +16,53 @@ export default function HotScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [favTick, setFavTick] = useState<number>(0);
 
+  const previewItem = (e: Event) => ({
+    id: e?.id,
+    title: typeof e?.title === "string" ? e.title.slice(0, 80) : e?.title,
+    hasSummary: typeof e?.summary === "string" && e.summary.length > 0,
+    hasAiSummary: typeof e?.ai?.summary === "string" && e.ai.summary.length > 0,
+    summaryPreview: typeof e?.summary === "string" ? e.summary.slice(0, 160) : null,
+    aiSummaryPreview: typeof e?.ai?.summary === "string" ? e.ai.summary.slice(0, 160) : null,
+  });
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const top10Raw = await fetchRecentHotTopWithinDays(30, 10);
+      console.log("[HOT] load: fetched recent hot raw", {
+        count: top10Raw.length,
+        sample: top10Raw.slice(0, 3).map(previewItem),
+      });
       const top10 = await enrichEventsWithTags(top10Raw as any);
-      setEvents(top10);
+      console.log("[HOT] load: enriched with tags", {
+        count: top10.length,
+        sample: (top10 as any[]).slice(0, 3).map(previewItem as any),
+      });
+      // Home과 동일한 로직: notices의 content를 요약으로 활용해 보강
+      const notices = await fetchNoticesCleaned(200);
+      const byUrl = new Map<string, Notice>();
+      (notices || []).forEach((n) => {
+        const url = (n.url || "").trim();
+        if (url) byUrl.set(url, n);
+      });
+      const findNoticeFor = (title?: string | null, url?: string | null): Notice | undefined => {
+        const u = (url || "").trim();
+        if (u && byUrl.has(u)) return byUrl.get(u);
+        const t = normalize(title || "");
+        if (!t) return undefined;
+        return (notices || []).find((n) => {
+          const nt = normalize(n.title || "");
+          return nt && (nt === t || nt.includes(t) || t.includes(nt));
+        });
+      };
+      const withSummary = (top10 as any[]).map((e: any) => {
+        if (typeof e?.summary === "string" && e.summary.trim()) return e;
+        const matched = findNoticeFor(e?.title, e?.sourceUrl);
+        const fromContent = matched?.content ? String(matched.content).slice(0, 200) : null;
+        return fromContent ? { ...e, summary: fromContent } : e;
+      });
+      console.log("[HOT] load: after notice-merge", withSummary.slice(0, 3).map(previewItem as any));
+      setEvents(withSummary as any);
     } catch (e) {
       //console.error("[HOT] load error", e);
       setEvents([]);
@@ -32,8 +75,39 @@ export default function HotScreen() {
     setRefreshing(true);
     try {
       const top10Raw = await fetchRecentHotTopWithinDays(30, 10);
+      console.log("[HOT] refresh: fetched recent hot raw", {
+        count: top10Raw.length,
+        sample: top10Raw.slice(0, 3).map(previewItem),
+      });
       const top10 = await enrichEventsWithTags(top10Raw as any);
-      setEvents(top10);
+      console.log("[HOT] refresh: enriched with tags", {
+        count: top10.length,
+        sample: (top10 as any[]).slice(0, 3).map(previewItem as any),
+      });
+      const notices = await fetchNoticesCleaned(200);
+      const byUrl = new Map<string, Notice>();
+      (notices || []).forEach((n) => {
+        const url = (n.url || "").trim();
+        if (url) byUrl.set(url, n);
+      });
+      const findNoticeFor = (title?: string | null, url?: string | null): Notice | undefined => {
+        const u = (url || "").trim();
+        if (u && byUrl.has(u)) return byUrl.get(u);
+        const t = normalize(title || "");
+        if (!t) return undefined;
+        return (notices || []).find((n) => {
+          const nt = normalize(n.title || "");
+          return nt && (nt === t || nt.includes(t) || t.includes(nt));
+        });
+      };
+      const withSummary = (top10 as any[]).map((e: any) => {
+        if (typeof e?.summary === "string" && e.summary.trim()) return e;
+        const matched = findNoticeFor(e?.title, e?.sourceUrl);
+        const fromContent = matched?.content ? String(matched.content).slice(0, 200) : null;
+        return fromContent ? { ...e, summary: fromContent } : e;
+      });
+      console.log("[HOT] refresh: after notice-merge", withSummary.slice(0, 3).map(previewItem as any));
+      setEvents(withSummary as any);
     } catch (e) {
       //console.error("[HOT] refresh error", e);
     } finally {
@@ -44,6 +118,13 @@ export default function HotScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // 상태 변경 시 프리뷰 로그
+  useEffect(() => {
+    if (!events) return;
+    const preview = (events || []).slice(0, 5).map(previewItem);
+    console.log("[HOT] state: events updated", { count: events.length, preview });
+  }, [events]);
 
   useEffect(() => {
     ensureFavUser();
