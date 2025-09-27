@@ -81,6 +81,132 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
   }
 }
 
+// 알림(notification) 컬렉션에서 배너로 사용할 이미지가 포함된 항목을 조회
+// 다양한 필드명을 허용: imageUrl | image_url | image | bannerImageUrl | image_urls[0]
+export async function fetchRecentNotificationBanners(maxCount: number = 10): Promise<Event[]> {
+  const db = getFirestore();
+  const ref = collection(db, "notifications");
+  // createdAt 기준 최근 순, 실패 시 정렬 없이 제한만 적용
+  let snap;
+  try {
+    snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount * 3)));
+  } catch (_) {
+    snap = await getDocs(query(ref, limit(maxCount * 3)));
+  }
+
+  const out: Event[] = [];
+  snap.forEach((doc) => {
+    const d = doc.data() as any;
+    const candidates: Array<string | null | undefined> = [
+      d?.imageUrl,
+      d?.image_url,
+      d?.image,
+      d?.bannerImageUrl,
+      Array.isArray(d?.image_urls) ? d.image_urls[0] : undefined,
+    ];
+    const image = candidates.find((u) => typeof u === "string" && String(u).trim() !== "");
+    if (!image) return;
+
+    // 최소 필드만 채운 Event 형태로 변환
+    out.push({
+      id: `notif-${doc.id}`,
+      title: d?.title || "",
+      summary: d?.body || d?.content || null,
+      startAt: d?.createdAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+      endAt: null,
+      location: null,
+      tags: ["알림"],
+      org: { id: "notification", name: d?.sender || "알림", logoUrl: null },
+      sourceUrl: d?.url || d?.link || null,
+      posterImageUrl: image,
+      ai: null,
+    } as Event);
+  });
+
+  // 상한 제한
+  return out.slice(0, maxCount);
+}
+
+// notices 컬렉션에서 배너로 사용할 이미지 추출
+// 우선순위: image_urls[0] -> content_html 내 <img src> 첫 번째 -> content 내 확장자 기반 URL
+export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<Event[]> {
+  const db = getFirestore();
+  const ref = collection(db, "notices");
+  let snap;
+  try {
+    snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount * 3)));
+  } catch (_) {
+    try {
+      snap = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount * 3)));
+    } catch {
+      snap = await getDocs(query(ref, limit(maxCount * 3)));
+    }
+  }
+  // createdAt 정렬이 비어있는 경우에도 폴백 수행
+  if (snap.empty) {
+    try {
+      const fbSnap = await getDocs(query(ref, orderBy("firebase_created_at", "desc"), limit(maxCount * 3)));
+      if (!fbSnap.empty) {
+        snap = fbSnap;
+      } else {
+        const plain = await getDocs(query(ref, limit(maxCount * 3)));
+        snap = plain;
+      }
+    } catch (_) {
+      const plain = await getDocs(query(ref, limit(maxCount * 3)));
+      snap = plain;
+    }
+  }
+
+  const out: Event[] = [];
+  console.log("[DB] fetchRecentNoticeBanners:snapshot", { count: snap.size });
+  snap.forEach((doc) => {
+    const d = doc.data() as any;
+    const title: string = d?.title || "";
+    const url: string | null = d?.url || null;
+    const author: string | null = d?.author || null;
+
+    // 1) image_urls[0]
+    let image: string | undefined;
+    if (Array.isArray(d?.image_urls) && d.image_urls.length > 0) {
+      image = d.image_urls[0];
+    }
+
+    // 2) content_html의 첫 <img src>
+    if (!image && typeof d?.content_html === "string") {
+      const m = d.content_html.match(/<img[^>]+src=["']([^"']+)["']/i);
+      if (m && m[1]) image = m[1];
+    }
+
+    // 3) content의 URL 추출(간단한 확장자 기반)
+    if (!image && typeof d?.content === "string") {
+      const m = d.content.match(/https?:[^\s"')]+\.(?:png|jpe?g|gif|webp)/i);
+      if (m && m[0]) image = m[0];
+    }
+
+    console.log("[DB] fetchRecentNoticeBanners:doc", { id: doc.id, hasImage: !!image, title: title?.slice?.(0, 60) });
+    if (!image) return;
+
+    out.push({
+      id: `notice-${doc.id}`,
+      title,
+      summary: null,
+      startAt: d?.createdAt?.toDate?.()?.toISOString?.() || d?.firebase_created_at || new Date().toISOString(),
+      endAt: null,
+      location: null,
+      tags: ["공지"],
+      org: { id: "notice", name: author || "공지", logoUrl: null },
+      sourceUrl: url,
+      posterImageUrl: image,
+      ai: null,
+    } as Event);
+  });
+
+  const sliced = out.slice(0, maxCount);
+  console.log("[DB] fetchRecentNoticeBanners:out", { count: sliced.length });
+  return sliced;
+}
+
 // 인기소식 검색 함수
 export async function searchHotNews(searchTerm: string, maxCount: number = 20): Promise<Event[]> {
   const db = getFirestore();
@@ -309,10 +435,10 @@ export async function fetchNoticesCleaned(maxCount: number = 20): Promise<Notice
     })();
 
     // 로그: 정제 전/후 프리뷰(200자)
-    console.log("[NOTICE] raw.title:", String(rawTitle).slice(0, 200));
-    console.log("[NOTICE] raw.content:", String(rawContent).slice(0, 200));
-    console.log("[NOTICE] cleaned.title:", cleanedTitle.slice(0, 200));
-    console.log("[NOTICE] cleaned.content:", cleanedContent.slice(0, 200));
+    // console.log("[NOTICE] raw.title:", String(rawTitle).slice(0, 200));
+    // console.log("[NOTICE] raw.content:", String(rawContent).slice(0, 200));
+    // console.log("[NOTICE] cleaned.title:", cleanedTitle.slice(0, 200));
+    // console.log("[NOTICE] cleaned.content:", cleanedContent.slice(0, 200));
 
     out.push({
       id: doc.id,

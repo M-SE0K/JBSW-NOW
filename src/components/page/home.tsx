@@ -38,11 +38,11 @@ export default function Home() {
           noticesCount: Array.isArray(notices) ? notices.length : 0,
         });
         ;(notices || []).slice(0, 20).forEach((n: any, i: number) => {
-          console.log("[UI] Home:notice sample", i, {
-            id: n.id,
-            title: typeof n.title === "string" ? n.title.slice(0, 120) : n.title,
-            url: n.url || null,
-          });
+          // console.log("[UI] Home:notice sample", i, {
+          //   id: n.id,
+          //   title: typeof n.title === "string" ? n.title.slice(0, 120) : n.title,
+          //   url: n.url || null,
+          // });
         });
 
         // Notice를 Event 형태로 간단 매핑(표시를 위한 최소 필드)
