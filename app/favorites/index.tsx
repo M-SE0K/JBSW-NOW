@@ -2,18 +2,59 @@ import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, StyleSheet, TextInput, Pressable, FlatList, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { getFavorites, searchFavorites, getRecentSearches, saveRecentSearch, clearRecentSearches } from "../../src/api/favorites";
-import { FavoriteItem } from "../../src/api/favorites";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import type { Event } from "../../src/types";
+import { ensureUserId, getFavorites as getFavIds, subscribe } from "../../src/services/favorites";
+import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
+import { searchByAllWords, normalize } from "../../src/services/search";
 
 
 export default function FavoritesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [allItems, setAllItems] = useState<Event[]>([]);
+  const [favEvents, setFavEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 초기 데이터 로드 + 즐겨찾기 구독
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        await ensureUserId();
+        const notices = await fetchNoticesCleaned(1000);
+        const mapped: Event[] = (notices || []).map((n: any): Event => ({
+          id: `notice-${n.id}`,
+          title: n.title,
+          summary: n.content ? String(n.content).slice(0, 200) : null,
+          startAt: deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at),
+          endAt: null,
+          location: null,
+          tags: ["공지"],
+          org: { id: "notice", name: n.author || "공지", logoUrl: null },
+          sourceUrl: n.url || null,
+          posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
+          ai: null,
+        }));
+        if (!mounted) return;
+        setAllItems(mapped);
+        const filtered = filterByFavorites(mapped);
+        console.log("[FAV] page init", { all: mapped.length, fav: filtered.length });
+        setFavEvents(filtered);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // 즐겨찾기 변경을 구독하되, 최신 allItems로 필터 재계산
+  useEffect(() => {
+    const unsub = subscribe(() => setFavEvents(filterByFavorites(allItems)));
+    return () => unsub();
+  }, [allItems]);
 
   // 최근 검색어 로드
   useEffect(() => {
@@ -22,85 +63,79 @@ export default function FavoritesScreen() {
 
   const loadRecentSearches = async () => {
     try {
-      const recent = await getRecentSearches();
-      setRecentSearches(recent);
+      if (typeof window !== "undefined" && window.localStorage) {
+        const v = window.localStorage.getItem("favoritesRecentSearches");
+        setRecentSearches(v ? JSON.parse(v) : []);
+      }
     } catch (error) {
       console.error("최근 검색어 로드 실패:", error);
     }
   };
 
-  // 즐겨찾기 쿼리
-  const favoritesQuery = useInfiniteQuery({
-    queryKey: ["favorites"],
-    queryFn: ({ pageParam }) => getFavorites({ cursor: pageParam as string | undefined }),
-    getNextPageParam: (last: any) => last?.nextCursor ?? undefined,
-    initialPageParam: undefined,
-  });
-
-  // 즐겨찾기 검색 쿼리
-  const favoritesSearchQuery = useInfiniteQuery({
-    queryKey: ["favorites-search", searchQuery],
-    queryFn: ({ pageParam }) => searchFavorites({ q: searchQuery, cursor: pageParam as string | undefined }),
-    getNextPageParam: (last: any) => last?.nextCursor ?? undefined,
-    enabled: isSearching && searchQuery.trim().length > 0,
-    initialPageParam: undefined,
-  });
-
-  const favorites = (favoritesQuery.data?.pages ?? [])
-    .flatMap((page: any) => page.data) as FavoriteItem[];
-
-  const searchResults = (favoritesSearchQuery.data?.pages ?? [])
-    .flatMap((page: any) => page.data) as FavoriteItem[];
-
   const handleSearch = async () => {
-    if (searchQuery.trim().length === 0) return;
-    
-    setIsSearching(true);
-    try {
-      await saveRecentSearch(searchQuery.trim());
-      await loadRecentSearches();
-      favoritesSearchQuery.refetch();
-    } catch (error) {
-      console.error("검색 실패:", error);
+    const q = normalize(searchQuery);
+    if (!q) {
+      setIsSearching(false);
+      setFavEvents(filterByFavorites(allItems));
+      return;
     }
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        const current = window.localStorage.getItem("favoritesRecentSearches");
+        const arr = current ? (JSON.parse(current) as string[]) : [];
+        const updated = [q, ...arr.filter((x) => x !== q)].slice(0, 10);
+        window.localStorage.setItem("favoritesRecentSearches", JSON.stringify(updated));
+        setRecentSearches(updated);
+      }
+    } catch {}
+    setIsSearching(true);
+    const base = filterByFavorites(allItems);
+    const filtered = searchByAllWords<Event>(base, q, ["title", "summary"] as any);
+    setFavEvents(filtered as Event[]);
   };
 
   const handleRecentSearchPress = async (query: string) => {
     setSearchQuery(query);
-    setIsSearching(true);
-    try {
-      await saveRecentSearch(query);
-      await loadRecentSearches();
-      favoritesSearchQuery.refetch();
-    } catch (error) {
-      console.error("최근 검색어 검색 실패:", error);
-    }
+    setIsSearching(false);
+    setTimeout(() => handleSearch(), 0);
   };
 
   const handleClearRecent = async () => {
     try {
-      await clearRecentSearches();
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.removeItem("favoritesRecentSearches");
+      }
       setRecentSearches([]);
     } catch (error) {
       console.error("최근 검색어 삭제 실패:", error);
     }
   };
 
-  // 즐겨찾기 중 이벤트 타입만 공용 카드 리스트 형식으로 매핑
-  const eventFavorites: Event[] = (isSearching ? searchResults : favorites)
-    .filter((f) => f.type === "event")
-    .map((f) => ({
-      id: f.itemId,
-      title: f.title,
-      summary: null,
-      startAt: new Date(f.createdAt).toISOString(),
-      endAt: null,
-      location: null,
-      tags: [],
-      org: { id: "favorite", name: "즐겨찾기", logoUrl: null, homepageUrl: null },
-      sourceUrl: null,
-      ai: null,
-    } as Event));
+  const eventFavorites: Event[] = favEvents;
+
+  function deriveIsoDate(input?: string | null): string {
+    if (!input || typeof input !== "string") return new Date().toISOString();
+    const s = input.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s).toISOString();
+    const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      const dt = new Date(Date.UTC(y, Math.max(0, mo - 1), d, 0, 0, 0));
+      return dt.toISOString();
+    }
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) return parsed.toISOString();
+    return new Date().toISOString();
+  }
+
+  function filterByFavorites(items: Event[]): Event[] {
+    const ids = new Set(getFavIds());
+    const out = items.filter((e) => ids.has(e.id));
+    console.log("[FAV] filter", { in: items.length, ids: ids.size, out: out.length });
+    return out;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -122,15 +157,15 @@ export default function FavoritesScreen() {
       {/* 검색 결과 또는 즐겨찾기 목록 */}
       <View style={styles.content}>
         {!isSearching && <SectionHeader title="즐겨찾기" showMore={false} style={{ marginTop: 0 }} />}
-        {isSearching ? (
+        {true ? (
           // 검색 결과
           <View style={styles.searchResults}>
-            {favoritesSearchQuery.isLoading ? (
+            {false ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#007AFF" />
                 <Text style={styles.loadingText}>검색 중...</Text>
               </View>
-            ) : favoritesSearchQuery.isError ? (
+            ) : false ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyText}>검색 중 오류가 발생했습니다</Text>
               </View>
@@ -150,13 +185,13 @@ export default function FavoritesScreen() {
             )}
           </View>
         ) : (
-          // 즐겨찾기 목록 또는 최근 검색어
+          // 항상 즐겨찾기 목록 표시 (검색하지 않을 때)
           <View>
-            {favoritesQuery.isLoading ? (
+            {loading ? (
               <View style={styles.loadingContainer}>
                 <Text style={styles.loadingText}>즐겨찾기 로딩 중...</Text>
               </View>
-            ) : eventFavorites.length > 0 ? (
+            ) : (
               <EventsList
                 events={eventFavorites}
                 placeholderColor="#f5f5f5"
@@ -165,46 +200,6 @@ export default function FavoritesScreen() {
                   console.log("[UI] favorite event press", ev.id);
                 }}
               />
-            ) : (
-              // 최근 검색어
-              <View>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>최근 검색어</Text>
-                  {recentSearches.length > 0 && (
-                    <Pressable onPress={handleClearRecent}>
-                      <Text style={styles.clearButton}>전체 삭제</Text>
-                    </Pressable>
-                  )}
-                </View>
-                
-                {recentSearches.length > 0 && (
-                  <FlatList
-                    data={recentSearches}
-                    keyExtractor={(item, index) => `${item}-${index}`}
-                    renderItem={({ item }) => (
-                      <Pressable 
-                        style={styles.recentItem}
-                        onPress={() => handleRecentSearchPress(item)}
-                      >
-                        <Ionicons name="time-outline" size={16} color="#999" />
-                        <Text style={styles.recentText}>{item}</Text>
-                        <Pressable 
-                          onPress={() => {
-                            const updated = recentSearches.filter(search => search !== item);
-                            setRecentSearches(updated);
-                            if (typeof window !== "undefined" && window.localStorage) {
-                              window.localStorage.setItem("favoritesRecentSearches", JSON.stringify(updated));
-                            }
-                          }}
-                        >
-                          <Ionicons name="close" size={16} color="#999" />
-                        </Pressable>
-                      </Pressable>
-                    )}
-                    showsVerticalScrollIndicator={false}
-                  />
-                )}
-              </View>
             )}
           </View>
         )}
