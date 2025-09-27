@@ -112,7 +112,7 @@ export default function FavoritesScreen() {
     setRefreshing(true);
     try {
       await ensureUserId();
-      const notices = await fetchNoticesCleaned(1000);
+      const notices = await fetchNoticesCleaned(10);
       const mappedRaw: Event[] = (notices || []).map((n: any): Event => ({
         id: `notice-${n.id}`,
         title: n.title,
