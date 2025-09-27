@@ -112,17 +112,8 @@ export default function RootLayout() {
             <Tabs.Screen
               name="test/local-image"
               options={{
-                title: "",
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="image-outline" color={color} size={size} />
-                ),
-                headerTitle: () => (
-                  <AppHeaderTitle color={colorScheme === "dark" ? "#fff" : "#125"} />
-                ),
-                headerTitleAlign: "left",
-                headerRight: () => (
-                  <AppHeaderRight iconColor={colorScheme === "dark" ? "#fff" : "#111"} />
-                ),
+                href: null,
+                headerShown: false,
               }}
             />
             <Tabs.Screen name="test/firebase" options={{ href: null }} />
