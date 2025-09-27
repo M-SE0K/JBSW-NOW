@@ -9,8 +9,8 @@ import ErrorState from "../../src/components/ErrorState";
 import EmptyState from "../../src/components/EmptyState";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
-import { fetchEvents } from "../../src/api/events";
-import { fetchNoticesCleaned, searchHotNews, saveHotRecentSearch } from "../../src/api/eventsFirestore";
+import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
+import { normalize, tokenize, searchByAllWords } from "../../src/services/search";
 import { Event } from "../../src/types";
 import { useRouter } from "expo-router";
 
@@ -20,12 +20,13 @@ export default function EventsScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
+  const [allItems, setAllItems] = useState<any[]>([]);
 
   // 새로운 소식 데이터 로드 (notices만 사용, date 내림차순)
   useEffect(() => {
     (async () => {
       try {
-        const notices = await fetchNoticesCleaned(100);
+        const notices = await fetchNoticesCleaned(1000);
         const noticeAsEvents = (notices || []).map((n: any) => {
           const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
           return {
@@ -44,7 +45,8 @@ export default function EventsScreen() {
         });
 
         noticeAsEvents.sort((a: any, b: any) => (toDateMsFromString(b.startAt) - toDateMsFromString(a.startAt)));
-        setNews(noticeAsEvents);
+        setAllItems(noticeAsEvents);
+        setNews(noticeAsEvents.slice(0, 5));
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
         setNews([]);
@@ -83,17 +85,16 @@ export default function EventsScreen() {
     return Number.isNaN(t) ? 0 : t;
   }
 
-  const handleSearch = async () => {
-    if (searchQuery.trim().length === 0) return;
-    
-    setIsSearching(true);
-    try {
-      await saveHotRecentSearch(searchQuery.trim());
-      const results = await searchHotNews(searchQuery.trim(), 20);
-      setSearchResults(results);
-    } catch (error) {
-      console.error("검색 실패:", error);
+  const handleSearch = () => {
+    const q = normalize(searchQuery);
+    if (!q) {
+      setIsSearching(false);
+      setSearchResults([]);
+      return;
     }
+    const results = searchByAllWords(allItems, q, ["title", "summary"] as any);
+    setIsSearching(true);
+    setSearchResults(results);
   };
 
   return (
