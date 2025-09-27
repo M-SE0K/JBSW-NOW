@@ -18,15 +18,6 @@ export default function HotScreen() {
     try {
       const top10 = await fetchRecentHotTopWithinDays(30, 10);
       setEvents(top10);
-      try {
-        const simplify = (e: Event) => ({ id: e.id, title: String(e.title || "").slice(0, 80), org: e.org?.name ?? null, startAt: e.startAt ?? null, url: e.sourceUrl ?? null });
-        const simple = top10.map(simplify);
-        //console.log("[hot] top10", simple);
-        top10.forEach((e, idx) => {
-          const t = String(e.title || "").replace(/\s+/g, " ").trim();
-          //console.log(`[hot] ${idx + 1}. ${t.slice(0, 80)} | ${e.id}`);
-        });
-      } catch {}
     } catch (e) {
       //console.error("[HOT] load error", e);
       setEvents([]);
@@ -40,15 +31,6 @@ export default function HotScreen() {
     try {
       const top10 = await fetchRecentHotTopWithinDays(30, 10);
       setEvents(top10);
-      try {
-        const simplify = (e: Event) => ({ id: e.id, title: String(e.title || "").slice(0, 80), org: e.org?.name ?? null, startAt: e.startAt ?? null, url: e.sourceUrl ?? null });
-        const simple = top10.map(simplify);
-        //console.log("[hot] top10", simple);
-        top10.forEach((e, idx) => {
-          const t = String(e.title || "").replace(/\s+/g, " ").trim();
-          //console.log(`[hot] ${idx + 1}. ${t.slice(0, 80)} | ${e.id}`);
-        });
-      } catch {}
     } catch (e) {
       //console.error("[HOT] refresh error", e);
     } finally {
@@ -69,30 +51,9 @@ export default function HotScreen() {
   return (
     <SafeAreaView style={styles.container}> 
       <View style={styles.content}>
-<<<<<<< HEAD
         {loading ? (
           <View style={styles.loadingBox}>
             <Text style={styles.loadingText}>불러오는 중...</Text>
-=======
-        {!isSearching && <SectionHeader title="새로운 인기 소식" showMore={false} style={{ paddingHorizontal: 16 }} />}
-        {isSearching ? (
-          // 검색 결과
-          <View style={styles.searchResults}>
-            {searchResults.length > 0 ? (
-              <EventsList
-                events={searchResults as any}
-                placeholderColor={placeholder}
-                emptyText="검색 결과가 없습니다"
-                onPressItem={(ev: any) => {
-                  console.log("[UI] search result press", ev.id);
-                }}
-              />
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
-              </View>
-            )}
->>>>>>> main
           </View>
         ) : (
           <EventsList
