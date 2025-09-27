@@ -1,6 +1,7 @@
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, useColorScheme } from "react-native";
+import { useRouter } from "expo-router";
 import SectionHeader from "../SectionHeader";
 import BannerSlider from "../BannerSlider";
 import { useEffect, useState } from "react";
@@ -12,16 +13,13 @@ export default function Home() {
   const placeholder = colorScheme === "dark" ? "#2B2F33" : "#E4EAEE";
   const textColor = colorScheme === "dark" ? "#fff" : "#111";
   const subText = colorScheme === "dark" ? "#C8CDD2" : "#6B7280";
+  const router = useRouter();
   const [news, setNews] = useState<any[]>([]);
   const [newsLimit, setNewsLimit] = useState<number>(20);
   const [noticeLimit, setNoticeLimit] = useState<number>(3);
-  const [expanded, setExpanded] = useState<boolean>(false);
 
   const handleMorePress = () => {
-    // 같은 화면에서 더 많이 로드
-    setExpanded(true);
-    setNewsLimit(100);
-    setNoticeLimit(30);
+    router.push("/events");
   };
 
   useEffect(() => {
@@ -37,6 +35,14 @@ export default function Home() {
           eventsCount: Array.isArray(eventsData) ? eventsData.length : 0,
           noticesCount: Array.isArray(notices) ? notices.length : 0,
         });
+        // notices: Title과 date만 로그 출력
+        if (Array.isArray(notices)) {
+          const preview = notices.map((n: any) => ({
+            title: typeof n.title === "string" ? n.title.slice(0, 80) : n.title,
+            date: n.date ?? n.crawled_at ?? n.firebase_created_at ?? null,
+          }));
+          console.log("[UI] Home:notices (title, date)", preview);
+        }
         ;(notices || []).slice(0, 20).forEach((n: any, i: number) => {
           // console.log("[UI] Home:notice sample", i, {
           //   id: n.id,
@@ -67,6 +73,14 @@ export default function Home() {
         // 공지 3건 + 기존 이벤트를 묶어서 렌더링
         const merged = [...noticeAsEvents, ...eventsData];
         console.log("[UI] Home:merged feed size", merged.length);
+        // 현재 피드 표시 순서 로그: Title과 date만
+        console.log(
+          "[UI] Home:feed (title, date)",
+          merged.map((it: any) => ({
+            title: typeof it.title === "string" ? it.title.slice(0, 80) : it.title,
+            date: it.startAt || null,
+          }))
+        );
         setNews(merged);
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
@@ -95,6 +109,20 @@ export default function Home() {
     return new Date().toISOString();
   }
 
+  function toDateMsFromString(s?: string | null): number {
+    if (!s || typeof s !== "string") return 0;
+    const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      const dt = new Date(y, Math.max(0, mo - 1), d, 0, 0, 0);
+      return dt.getTime();
+    }
+    const t = Date.parse(s);
+    return Number.isNaN(t) ? 0 : t;
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["left", "right", "bottom"]}>
       <EventsList
@@ -106,16 +134,16 @@ export default function Home() {
             <View style={{ marginTop: 12, borderRadius: 14, overflow: "hidden" }}>
               <BannerSlider limit={8} onPressItem={(ev) => {
                 // TODO: 상세 페이지로 네비게이션 연결
-                console.log("[UI] BannerSlider:press", ev.id);
+                //console.log("[UI] BannerSlider:press", ev.id);
               }} />
             </View>
             {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
-            <SectionHeader title="새로운 소식" onPressMore={handleMorePress} showMore={!expanded} />
+            <SectionHeader title="새로운 소식" onPressMore={handleMorePress} />
           </View>
         }
         onPressItem={(ev: any) => {
           // TODO: 상세 라우팅 연결
-          console.log("[UI] news press", ev.id);
+          //console.log("[UI] news press", ev.id);
         }}
       />
     </SafeAreaView>
