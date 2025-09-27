@@ -114,6 +114,18 @@ export default function SettingsScreen() {
           showArrow={true}
         />
 
+        <SectionHeader title="데이터 관리" />
+        <SettingItem
+          title="캐시 삭제"
+          subtitle="저장된 데이터 초기화"
+          icon="trash-outline"
+          onPress={() => {
+            // TODO: 캐시 삭제 확인 모달
+            console.log("캐시 삭제");
+          }}
+          showArrow={true}
+        />
+
         <SectionHeader title="정보" />
         <SettingItem
           title="앱 정보"
