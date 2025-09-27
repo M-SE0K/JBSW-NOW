@@ -88,9 +88,11 @@ export default function RootLayout() {
                           <Ionicons name="search-outline" color={iconColor} size={24} />
                         </Pressable>
                       </Link>
-                      <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
-                        <Ionicons name="notifications-outline" color={iconColor} size={24} />
-                      </Pressable>
+                      <Link href="/notification" asChild>
+                        <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
+                          <Ionicons name="notifications-outline" color={iconColor} size={24} />
+                        </Pressable>
+                      </Link>
                       <Pressable accessibilityLabel="menu" style={{ marginLeft: 18 }}>
                         <Ionicons name="menu-outline" color={iconColor} size={24} />
                       </Pressable>
@@ -106,6 +108,13 @@ export default function RootLayout() {
             <Tabs.Screen name="events/[id]" options={{ href: null }} />
             <Tabs.Screen name="orgs/index" options={{ href: null }} />
             <Tabs.Screen name="orgs/[orgId]" options={{ href: null }} />
+            <Tabs.Screen 
+              name="notification/index" 
+              options={{ 
+                href: null,
+                headerShown: false 
+              }} 
+            />
             <Tabs.Screen 
               name="search/index" 
               options={{ 

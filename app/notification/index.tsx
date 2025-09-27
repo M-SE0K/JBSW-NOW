@@ -42,7 +42,7 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* 헤더 */}
-      {/* <View style={styles.header}>
+      <View style={styles.header}>
         <View style={styles.headerTop}>
           <Pressable 
             style={styles.backButton}
@@ -56,8 +56,11 @@ export default function NotificationsScreen() {
           </Pressable>
         </View>
         
-        <Text style={styles.title}>알림</Text>
-      </View> */}
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>알림</Text>
+          <Ionicons name="chevron-down" size={20} color="#666" />
+        </View>
+      </View>
 
       {/* 알림 목록 */}
       <View style={styles.content}>
@@ -112,11 +115,16 @@ const styles = StyleSheet.create({
   settingsButton: {
     padding: 4,
   },
+  titleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 12,
+  },
   title: {
     fontSize: 18,
     fontWeight: "600",
     color: "#000",
-    marginLeft: 12,
+    marginRight: 4,
   },
   content: {
     flex: 1,

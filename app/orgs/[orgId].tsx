@@ -15,10 +15,11 @@ export default function OrgDetailScreen() {
   const router = useRouter();
   const query = useInfiniteQuery({
     queryKey: ["org-events", orgId],
-    queryFn: ({ pageParam }) => fetchEvents({ orgId: orgId!, cursor: pageParam }),
-    getNextPageParam: (last) => last?.nextCursor ?? undefined,
+    queryFn: ({ pageParam }) => fetchEvents({ orgId: orgId!, cursor: pageParam as string | undefined }),
+    initialPageParam: undefined,
+    getNextPageParam: (last: any) => last?.nextCursor ?? undefined,
   });
-  const data = (query.data?.pages ?? []).flatMap((p) => p.data) as Event[];
+  const data = (query.data?.pages ?? []).flatMap((p: any) => p.data) as Event[];
 
   const onRefresh = useCallback(() => query.refetch(), [query]);
   const onEndReached = useCallback(() => {
