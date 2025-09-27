@@ -25,9 +25,11 @@ export function AppHeaderRight({ iconColor }: { iconColor: string }) {
           <Ionicons name="search-outline" color={iconColor} size={24} />
         </Pressable>
       </Link>
-      <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
-        <Ionicons name="notifications-outline" color={iconColor} size={24} />
-      </Pressable>
+      <Link href="/notification" asChild>
+        <Pressable accessibilityLabel="notifications" style={{ marginLeft: 18 }}>
+          <Ionicons name="notifications-outline" color={iconColor} size={24} />
+        </Pressable>
+      </Link>
       <Pressable accessibilityLabel="menu" style={{ marginLeft: 18 }}>
         <Ionicons name="menu-outline" color={iconColor} size={24} />
       </Pressable>

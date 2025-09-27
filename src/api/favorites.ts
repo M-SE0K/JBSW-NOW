@@ -16,6 +16,11 @@ export type FavoritesQuery = {
   cursor?: string;
 };
 
+export type FavoritesSearchQuery = {
+  q: string;
+  cursor?: string;
+};
+
 export async function getFavorites(params: FavoritesQuery = {}): Promise<{ data: FavoriteItem[]; nextCursor?: string | null }> {
   try {
     // TODO: 실제 API 호출
@@ -104,4 +109,64 @@ function getMockFavorites(): { data: FavoriteItem[]; nextCursor: string | null }
     data: mockFavorites,
     nextCursor: null,
   };
+}
+
+// 즐겨찾기 내 검색 함수
+export async function searchFavorites(params: FavoritesSearchQuery): Promise<{ data: FavoriteItem[]; nextCursor?: string | null }> {
+  try {
+    // TODO: 실제 API 호출
+    // const res = await api.get("/favorites/search", { params });
+    // return res.data;
+    
+    // 모의 검색 결과 반환
+    const allFavorites = await getFavorites();
+    const filtered = allFavorites.data.filter(fav => 
+      fav.title.toLowerCase().includes(params.q.toLowerCase())
+    );
+    
+    return {
+      data: filtered,
+      nextCursor: null,
+    };
+  } catch (error) {
+    console.error("즐겨찾기 검색 실패:", error);
+    return { data: [], nextCursor: null };
+  }
+}
+
+// 즐겨찾기 전용 최근 검색어 관련 함수들
+export async function getRecentSearches(): Promise<string[]> {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const stored = window.localStorage.getItem("favoritesRecentSearches");
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  } catch (error) {
+    console.error("즐겨찾기 최근 검색어 로드 실패:", error);
+    return [];
+  }
+}
+
+export async function saveRecentSearch(query: string): Promise<void> {
+  try {
+    const recent = await getRecentSearches();
+    const updated = [query, ...recent.filter(item => item !== query)].slice(0, 10);
+    
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem("favoritesRecentSearches", JSON.stringify(updated));
+    }
+  } catch (error) {
+    console.error("즐겨찾기 최근 검색어 저장 실패:", error);
+  }
+}
+
+export async function clearRecentSearches(): Promise<void> {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.removeItem("favoritesRecentSearches");
+    }
+  } catch (error) {
+    console.error("즐겨찾기 최근 검색어 삭제 실패:", error);
+  }
 }
