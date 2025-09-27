@@ -16,10 +16,11 @@ export default function EventsScreen() {
 
   const query = useInfiniteQuery({
     queryKey: ["events", filters],
-    queryFn: ({ pageParam }) => fetchEvents({ ...filters, cursor: pageParam }),
-    getNextPageParam: (last) => last?.nextCursor ?? undefined,
+    queryFn: ({ pageParam }) => fetchEvents({ ...filters, cursor: pageParam as string | undefined }),
+    initialPageParam: undefined,
+    getNextPageParam: (last: any) => last?.nextCursor ?? undefined,
   });
-  const data = useMemo(() => (query.data?.pages ?? []).flatMap((p) => p.data) as Event[], [query.data]);
+  const data = useMemo(() => (query.data?.pages ?? []).flatMap((p: any) => p.data) as Event[], [query.data]);
 
   const openFilters = () => router.push({ pathname: "/(modals)/filters", params: { current: JSON.stringify(filters) } });
 
