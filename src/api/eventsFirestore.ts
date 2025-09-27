@@ -86,7 +86,7 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
 export async function fetchRecentNotificationBanners(maxCount: number = 10): Promise<Event[]> {
   const db = getFirestore();
   const ref = collection(db, "notifications");
-  // createdAt 기준 최근 순, 실패 시 정렬 없이 제한만 적용
+  // date 기준 최근 순, 실패 시 정렬 없이 제한만 적용
   let snap;
   try {
     snap = await getDocs(query(ref, orderBy("date", "desc"), limit(maxCount * 3)));
@@ -146,7 +146,7 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
       }
     }
   }
-  // createdAt 정렬이 비어있는 경우에도 폴백 수행
+  // date 정렬이 비어있는 경우에도 폴백 수행
   if (snap.empty) {
     try {
       const fbSnap = await getDocs(query(ref, orderBy("date", "desc"), limit(maxCount * 3)));
@@ -334,7 +334,7 @@ export async function clearHotRecentSearches(): Promise<void> {
   }
 }
 
-// 최근 소식(이벤트) 피드: createdAt DESC 상위 N개
+// 최근 소식(이벤트) 피드: date DESC 상위 N개
 export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
   try {
     const db = getFirestore();
@@ -369,7 +369,7 @@ export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
   }
 }
 
-// 최근 N일 이내 createdAt 기준으로 최신 소식 조회
+// 최근 N일 이내 date 기준으로 최신 소식 조회
 export async function fetchRecentNewsWithinDays(days: number = 30, maxCount: number = 50): Promise<Event[]> {
   try {
     const db = getFirestore();
