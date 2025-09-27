@@ -16,8 +16,11 @@ const COL = "hotClicks";
 
 export async function incrementHotClick(payload: { key: string; title?: string | null; sourceUrl?: string | null; posterImageUrl?: string | null; }): Promise<void> {
   const db = getFirestore();
-  const key = (payload.key || "").trim();
-  if (!key) return;
+  const raw = (payload.key || "").trim();
+  if (!raw) return;
+  // notice로 통일: 선행 hot- 제거 후, notice- 없으면 부여
+  let key = raw.replace(/^hot-/, "");
+  if (!/^notice-/.test(key)) key = `notice-${key}`;
   const ref = doc(db, COL, key);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
@@ -51,8 +54,15 @@ export async function fetchHotTop(maxCount: number = 20): Promise<Event[]> {
   const out: Event[] = [];
   snap.forEach((docu) => {
     const d = docu.data() as any;
+    // 저장된 문서 id는 notice-로 통일되어 있다고 가정
+    const normalizedId = (() => {
+      let id = String(docu.id || "");
+      id = id.replace(/^hot-/, "");
+      if (!/^notice-/.test(id)) id = `notice-${id}`;
+      return id;
+    })();
     out.push({
-      id: `hot-${docu.id}`,
+      id: normalizedId,
       title: d?.title || "인기 글",
       summary: null,
       startAt: new Date(d?.updatedAt?.toDate?.() || Date.now()).toISOString(),
