@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 export const HEADER_TITLE_TEXT = "JBSW NOW";
@@ -18,6 +18,8 @@ export function AppHeaderTitle({ color, text = HEADER_TITLE_TEXT }: { color: str
 }
 
 export function AppHeaderRight({ iconColor }: { iconColor: string }) {
+  const router = useRouter();
+  
   return (
     <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}>
       <Link href="/search" asChild>
@@ -30,7 +32,11 @@ export function AppHeaderRight({ iconColor }: { iconColor: string }) {
           <Ionicons name="notifications-outline" color={iconColor} size={24} />
         </Pressable>
       </Link>
-      <Pressable accessibilityLabel="menu" style={{ marginLeft: 18 }}>
+      <Pressable 
+        accessibilityLabel="menu" 
+        style={{ marginLeft: 18 }}
+        onPress={() => router.push("/settings")}
+      >
         <Ionicons name="menu-outline" color={iconColor} size={24} />
       </Pressable>
     </View>
