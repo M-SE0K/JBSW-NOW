@@ -3,78 +3,103 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { searchContent, getRecentSearches, saveRecentSearch, clearRecentSearches } from "../../src/api/search";
-import { Event, Org } from "../../src/types";
+import { Event } from "../../src/types";
 import EventCard from "../../src/components/EventCard";
+import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
+import { searchByAllWords, normalize } from "../../src/services/search";
 
 export default function SearchScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [allItems, setAllItems] = useState<any[]>([]);
+  const [results, setResults] = useState<any[]>([]);
 
-  // 최근 검색어 로드
+  // 최근 검색어 로드 + 데이터 프리로드(메모리)
   useEffect(() => {
     loadRecentSearches();
+    preloadData();
   }, []);
 
   const loadRecentSearches = async () => {
     try {
-      const recent = await getRecentSearches();
-      setRecentSearches(recent);
+      if (typeof window !== "undefined" && window.localStorage) {
+        const saved = window.localStorage.getItem("recentSearches");
+        setRecentSearches(saved ? JSON.parse(saved) : []);
+      }
     } catch (error) {
       console.error("최근 검색어 로드 실패:", error);
     }
   };
 
-  // 검색 쿼리
-  const searchQuery_result = useInfiniteQuery({
-    queryKey: ["search", searchQuery],
-    queryFn: ({ pageParam }) => searchContent({ q: searchQuery, cursor: pageParam as string | undefined }),
-    getNextPageParam: (last: any) => last?.nextCursor ?? undefined,
-    enabled: isSearching && searchQuery.trim().length > 0,
-    initialPageParam: undefined,
-  });
+  const preloadData = async () => {
+    try {
+      const notices = await fetchNoticesCleaned(1000);
+      const noticeAsEvents: Event[] = (notices || []).map((n: any) => ({
+        id: `notice-${n.id}`,
+        title: n.title,
+        summary: n.content ? String(n.content).slice(0, 200) : null,
+        startAt: n.date || n.crawled_at || n.firebase_created_at || "",
+        endAt: null,
+        location: null,
+        tags: ["공지"],
+        org: { id: "notice", name: n.author || "공지", logoUrl: null },
+        sourceUrl: n.url || null,
+        posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
+        ai: null,
+      } as any));
+      setAllItems(noticeAsEvents);
+    } catch (e) {
+      console.warn("[UI] preloadData error", e);
+      setAllItems([]);
+    }
+  };
 
   const handleSearch = async () => {
-    if (searchQuery.trim().length === 0) return;
-    
-    setIsSearching(true);
-    try {
-      await saveRecentSearch(searchQuery.trim());
-      await loadRecentSearches();
-      searchQuery_result.refetch();
-    } catch (error) {
-      console.error("검색 실패:", error);
+    const q = normalize(searchQuery);
+    if (!q) {
+      setIsSearching(false);
+      setResults([]);
+      return;
     }
+    // 최근 검색어 저장
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        const current = await (async () => {
+          const saved = window.localStorage.getItem("recentSearches");
+          return saved ? (JSON.parse(saved) as string[]) : [];
+        })();
+        const updated = [q, ...current.filter((v) => v !== q)].slice(0, 10);
+        window.localStorage.setItem("recentSearches", JSON.stringify(updated));
+        setRecentSearches(updated);
+      }
+    } catch {}
+
+    const found = searchByAllWords(allItems as any, q, ["title", "summary"] as any);
+    setIsSearching(true);
+    setResults(found);
   };
 
   const handleRecentSearchPress = async (query: string) => {
     setSearchQuery(query);
-    setIsSearching(true);
-    try {
-      await saveRecentSearch(query);
-      await loadRecentSearches();
-      searchQuery_result.refetch();
-    } catch (error) {
-      console.error("최근 검색어 검색 실패:", error);
-    }
+    setIsSearching(false);
+    setResults([]);
+    setTimeout(() => handleSearch(), 0);
   };
 
   const handleClearRecent = async () => {
     try {
-      await clearRecentSearches();
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.removeItem("recentSearches");
+      }
       setRecentSearches([]);
     } catch (error) {
       console.error("최근 검색어 삭제 실패:", error);
     }
   };
 
-  const allEvents = (searchQuery_result.data?.pages ?? [])
-    .flatMap((page: any) => page.events) as Event[];
-  const allOrgs = (searchQuery_result.data?.pages ?? [])
-    .flatMap((page: any) => page.organizations) as Org[];
+  const allEvents = results;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -98,40 +123,16 @@ export default function SearchScreen() {
         {isSearching ? (
           // 검색 결과
           <View style={styles.searchResults}>
-            {searchQuery_result.isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
-                <Text style={styles.loadingText}>검색 중...</Text>
-              </View>
-            ) : searchQuery_result.isError ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>검색 중 오류가 발생했습니다</Text>
-              </View>
-            ) : allEvents.length > 0 || allOrgs.length > 0 ? (
+            {allEvents.length > 0 ? (
               <FlatList
-                data={[...allEvents, ...allOrgs.map(org => ({ ...org, type: 'organization' }))]}
+                data={allEvents}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => {
-                  if ('type' in item && item.type === 'organization') {
-                    return (
-                      <Pressable 
-                        style={styles.resultItem}
-                        onPress={() => console.log('조직 클릭:', item)}
-                      >
-                        <View style={styles.resultContent}>
-                          <Ionicons name="business-outline" size={20} color="#666" />
-                          <Text style={styles.resultTitle}>{item.name}</Text>
-                        </View>
-                      </Pressable>
-                    );
-                  }
-                  return (
-                    <EventCard 
-                      event={item as Event} 
-                      onPress={() => router.push({ pathname: "/events/[id]", params: { id: item.id } })} 
-                    />
-                  );
-                }}
+                renderItem={({ item }) => (
+                  <EventCard 
+                    event={item as Event} 
+                    onPress={() => router.push({ pathname: "/events/[id]", params: { id: item.id } })} 
+                  />
+                )}
                 showsVerticalScrollIndicator={false}
               />
             ) : (
