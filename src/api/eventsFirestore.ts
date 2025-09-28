@@ -359,13 +359,12 @@ export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
       } as Event);
     });
     
-    // 항상 모의 데이터와 실제 데이터를 합쳐서 반환
-    const mockData = getMockRecentNews();
-    return [...mockData, ...out];
+    // 실제 데이터만 반환 (모의 데이터 제거)
+    return out;
   } catch (error) {
     console.error("[DB] fetchRecentNews:error", error);
-    // 오류 발생 시 모의 데이터 반환
-    return getMockRecentNews();
+    // 오류 발생 시 빈 배열 반환
+    return [];
   }
 }
 

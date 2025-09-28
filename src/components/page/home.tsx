@@ -30,7 +30,7 @@ export default function Home() {
         // 이벤트와 공지를 병렬로 조회
         const [eventsData, notices] = await Promise.all([
           fetchRecentNews(newsLimit),
-          fetchNoticesCleaned(noticeLimit),
+          fetchNoticesCleaned(noticeLimit), // 3개로 되돌리기
         ]);
 
         console.log("[UI] Home:fetch done", {

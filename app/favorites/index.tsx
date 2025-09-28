@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, StyleSheet, TextInput, Pressable, FlatList, ActivityIndicator, Keyboard } from "react-native";
+import { View, Text, StyleSheet, TextInput, Pressable, FlatList, ActivityIndicator, Keyboard, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import type { Event } from "../../src/types";
 import { ensureUserId, getFavorites as getFavIds, subscribe } from "../../src/services/favorites";
-import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
-import { enrichEventsWithTags } from "../../src/services/tags";
+import { fetchRecentNews, fetchNoticesCleaned } from "../../src/api/eventsFirestore";
 import { searchByAllWords, normalize } from "../../src/services/search";
 
 
 export default function FavoritesScreen() {
+  const colorScheme = useColorScheme();
+  const placeholder = colorScheme === "dark" ? "#2B2F33" : "#E4EAEE";
   const [searchQuery, setSearchQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -21,45 +22,69 @@ export default function FavoritesScreen() {
   const [favEvents, setFavEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [favTick, setFavTick] = useState<number>(0);
   const RECENT_KEY = "recentSearches"; // 검색 화면과 공유
   const [showRecent, setShowRecent] = useState(false);
 
-  // 초기 데이터 로드 + 즐겨찾기 구독
+  // 초기 데이터 로드 (홈화면과 동일한 방식)
   useEffect(() => {
-    let mounted = true;
     (async () => {
       try {
         await ensureUserId();
-        const notices = await fetchNoticesCleaned(10);
-        const mappedRaw: Event[] = (notices || []).map((n: any): Event => ({
-          id: `notice-${n.id}`,
-          title: n.title,
-          summary: n.content ? String(n.content).slice(0, 200) : null,
-          startAt: deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at),
-          endAt: null,
-          location: null,
-          tags: [],
-          org: { id: "notice", name: n.author || "공지", logoUrl: null },
-          sourceUrl: n.url || null,
-          posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
-          ai: null,
-        }));
-        const mapped = await enrichEventsWithTags(mappedRaw as any);
-        if (!mounted) return;
-        setAllItems(mapped);
-        const filtered = filterByFavorites(mapped);
-        console.log("[FAV] page init", { all: mapped.length, fav: filtered.length });
+        
+        // 홈화면과 동일한 데이터 로딩 방식 사용
+        const [eventsData, notices] = await Promise.all([
+          fetchRecentNews(1000),
+          fetchNoticesCleaned(100),
+        ]);
+
+        console.log("[UI] Favorites:fetch done", {
+          eventsCount: Array.isArray(eventsData) ? eventsData.length : 0,
+          noticesCount: Array.isArray(notices) ? notices.length : 0,
+        });
+
+        // notices를 Event 형태로 변환 (홈화면과 동일한 방식)
+        const noticeAsEvents = (notices || []).map((n: any) => {
+          const firstImage = Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null;
+          const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
+          return {
+            id: `notice-${n.id}`,
+            title: n.title,
+            summary: n.content ? String(n.content).slice(0, 200) : null,
+            startAt: startAtIso,
+            endAt: null,
+            location: null,
+            tags: ["공지"],
+            org: { id: "notice", name: n.author || "공지", logoUrl: null },
+            sourceUrl: n.url || null,
+            posterImageUrl: firstImage,
+            ai: null,
+          } as any;
+        });
+
+        // events와 notices를 합쳐서 홈화면과 동일한 데이터 구성
+        const merged = [...noticeAsEvents, ...eventsData];
+        console.log("[UI] Favorites:merged feed size", merged.length);
+        
+        setAllItems(merged);
+        const filtered = filterByFavorites(merged);
+        console.log("[FAV] page init", { all: merged.length, fav: filtered.length });
         setFavEvents(filtered);
+      } catch (e) {
+        console.warn("[UI] Favorites fetch error", e);
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     })();
-    return () => { mounted = false; };
   }, []);
 
-  // 즐겨찾기 변경을 구독하되, 최신 allItems로 필터 재계산
+  // 즐겨찾기 변경 구독 (홈화면과 동일한 방식)
   useEffect(() => {
-    const unsub = subscribe(() => setFavEvents(filterByFavorites(allItems)));
+    ensureUserId();
+    const unsub = subscribe(() => {
+      setFavTick((v) => v + 1);
+      setFavEvents(filterByFavorites(allItems));
+    });
     return () => unsub();
   }, [allItems]);
 
@@ -112,23 +137,37 @@ export default function FavoritesScreen() {
     setRefreshing(true);
     try {
       await ensureUserId();
-      const notices = await fetchNoticesCleaned(1000);
-      const mappedRaw: Event[] = (notices || []).map((n: any): Event => ({
-        id: `notice-${n.id}`,
-        title: n.title,
-        summary: n.content ? String(n.content).slice(0, 200) : null,
-        startAt: deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at),
-        endAt: null,
-        location: null,
-        tags: [],
-        org: { id: "notice", name: n.author || "공지", logoUrl: null },
-        sourceUrl: n.url || null,
-        posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
-        ai: null,
-      }));
-      const mapped = await enrichEventsWithTags(mappedRaw as any);
-      setAllItems(mapped);
-      const base = filterByFavorites(mapped);
+      
+      // 홈화면과 동일한 데이터 로딩 방식 사용
+      const [eventsData, notices] = await Promise.all([
+        fetchRecentNews(1000),
+        fetchNoticesCleaned(100),
+      ]);
+      
+      // notices를 Event 형태로 변환 (홈화면과 동일한 방식)
+      const noticeAsEvents = (notices || []).map((n: any) => {
+        const firstImage = Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null;
+        const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
+        return {
+          id: `notice-${n.id}`,
+          title: n.title,
+          summary: n.content ? String(n.content).slice(0, 200) : null,
+          startAt: startAtIso,
+          endAt: null,
+          location: null,
+          tags: ["공지"],
+          org: { id: "notice", name: n.author || "공지", logoUrl: null },
+          sourceUrl: n.url || null,
+          posterImageUrl: firstImage,
+          ai: null,
+        } as any;
+      });
+
+      // events와 notices를 합쳐서 홈화면과 동일한 데이터 구성
+      const merged = [...noticeAsEvents, ...eventsData];
+      
+      setAllItems(merged);
+      const base = filterByFavorites(merged);
       const q = normalize(searchQuery);
       if (isSearching && q) {
         const filtered = searchByAllWords<Event>(base, q, ["title", "summary"] as any);
@@ -264,8 +303,9 @@ export default function FavoritesScreen() {
             ) : eventFavorites.length > 0 ? (
               <EventsList
                 events={eventFavorites}
-                placeholderColor="#f5f5f5"
+                placeholderColor={placeholder}
                 emptyText="검색 결과가 없습니다"
+                extraData={favTick}
                 onPressItem={(ev) => {
                   console.log("[UI] favorite event press", ev.id);
                 }}
@@ -280,22 +320,17 @@ export default function FavoritesScreen() {
           </View>
         ) : (
           // 항상 즐겨찾기 목록 표시 (검색하지 않을 때)
-          <View>
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>즐겨찾기 로딩 중...</Text>
-              </View>
-            ) : (
-              <EventsList
-                events={eventFavorites}
-                placeholderColor="#f5f5f5"
-                emptyText="즐겨찾기가 없습니다"
-                onPressItem={(ev) => {
-                  console.log("[UI] favorite event press", ev.id);
-                }}
-              />
-            )}
-          </View>
+          <EventsList
+            events={eventFavorites}
+            placeholderColor={placeholder}
+            emptyText="즐겨찾기가 없습니다"
+            extraData={favTick}
+            refreshing={refreshing}
+            onRefresh={reloadFavorites}
+            onPressItem={(ev) => {
+              console.log("[UI] favorite event press", ev.id);
+            }}
+          />
         )}
       </View>
     </SafeAreaView>

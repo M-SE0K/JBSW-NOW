@@ -9,8 +9,7 @@ import ErrorState from "../../src/components/ErrorState";
 import EmptyState from "../../src/components/EmptyState";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
-import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
-import { enrichEventsWithTags } from "../../src/services/tags";
+import { fetchRecentNews, fetchNoticesCleaned } from "../../src/api/eventsFirestore";
 import { normalize, tokenize, searchByAllWords } from "../../src/services/search";
 import { Event } from "../../src/types";
 import { useRouter } from "expo-router";
@@ -23,12 +22,24 @@ export default function EventsScreen() {
   const [news, setNews] = useState<any[]>([]);
   const [allItems, setAllItems] = useState<any[]>([]);
 
-  // 새로운 소식 데이터 로드 (notices만 사용, date 내림차순)
+  // 새로운 소식 데이터 로드 (홈화면과 동일한 방식)
   useEffect(() => {
     (async () => {
       try {
-        const notices = await fetchNoticesCleaned(1000);
-        const noticeAsEventsRaw = (notices || []).map((n: any) => {
+        // 홈화면과 동일한 데이터 로딩 방식 사용
+        const [eventsData, notices] = await Promise.all([
+          fetchRecentNews(1000),
+          fetchNoticesCleaned(100),
+        ]);
+
+        console.log("[UI] Events:fetch done", {
+          eventsCount: Array.isArray(eventsData) ? eventsData.length : 0,
+          noticesCount: Array.isArray(notices) ? notices.length : 0,
+        });
+
+        // notices를 Event 형태로 변환 (홈화면과 동일한 방식)
+        const noticeAsEvents = (notices || []).map((n: any) => {
+          const firstImage = Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null;
           const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
           return {
             id: `notice-${n.id}`,
@@ -37,20 +48,25 @@ export default function EventsScreen() {
             startAt: startAtIso,
             endAt: null,
             location: null,
-            tags: [],
+            tags: ["공지"],
             org: { id: "notice", name: n.author || "공지", logoUrl: null },
             sourceUrl: n.url || null,
-            posterImageUrl: Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null,
+            posterImageUrl: firstImage,
             ai: null,
           } as any;
         });
 
-        const noticeAsEvents = await enrichEventsWithTags(noticeAsEventsRaw as any);
-        noticeAsEvents.sort((a: any, b: any) => (toDateMsFromString(b.startAt) - toDateMsFromString(a.startAt)));
-        setAllItems(noticeAsEvents);
-        setNews(noticeAsEvents.slice(0, 5));
+        // events와 notices를 합쳐서 홈화면과 동일한 데이터 구성
+        const merged = [...noticeAsEvents, ...eventsData];
+        console.log("[UI] Events:merged feed size", merged.length);
+        
+        // 날짜 기준으로 정렬 (최신순)
+        merged.sort((a: any, b: any) => (toDateMsFromString(b.startAt) - toDateMsFromString(a.startAt)));
+        
+        setAllItems(merged);
+        setNews(merged.slice(0, 20)); // 더보기 페이지이므로 더 많은 항목 표시
       } catch (e) {
-        console.warn("[UI] fetchRecentNews error", e);
+        console.warn("[UI] Events fetch error", e);
         setNews([]);
       }
     })();
