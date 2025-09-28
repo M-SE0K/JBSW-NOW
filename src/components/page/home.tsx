@@ -8,6 +8,7 @@ import BannerSlider from "../BannerSlider";
 import { useEffect, useState } from "react";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
+import { enrichEventsWithTags, classifyEventTags } from "../../services/tags";
 import EventsList from "../EventsList";
 
 export default function Home() {
@@ -17,7 +18,7 @@ export default function Home() {
   const subText = colorScheme === "dark" ? "#C8CDD2" : "#6B7280";
   const router = useRouter();
   const [news, setNews] = useState<any[]>([]);
-  const [newsLimit, setNewsLimit] = useState<number>(20);
+  const [newsLimit, setNewsLimit] = useState<number>(200);
   const [noticeLimit, setNoticeLimit] = useState<number>(3);
   const [favTick, setFavTick] = useState<number>(0);
 
@@ -29,13 +30,13 @@ export default function Home() {
     (async () => {
       try {
         // 이벤트와 공지를 병렬로 조회
-        const [eventsData, notices] = await Promise.all([
+        const [eventsDataRaw, notices] = await Promise.all([
           fetchRecentNews(newsLimit),
           fetchNoticesCleaned(noticeLimit),
         ]);
 
         console.log("[UI] Home:fetch done", {
-          eventsCount: Array.isArray(eventsData) ? eventsData.length : 0,
+          eventsCount: Array.isArray(eventsDataRaw) ? eventsDataRaw.length : 0,
           noticesCount: Array.isArray(notices) ? notices.length : 0,
         });
         // notices: Title과 date만 로그 출력
@@ -54,26 +55,35 @@ export default function Home() {
           // });
         });
 
-        // Notice를 Event 형태로 간단 매핑(표시를 위한 최소 필드)
-        const noticeAsEvents = (notices || []).map((n: any) => {
+        // Notice를 Event 형태로 매핑하며 Gemini 기반 태그 라벨링 적용
+        const noticeAsEvents = await Promise.all((notices || []).map(async (n: any) => {
           const firstImage = Array.isArray(n.image_urls) && n.image_urls.length > 0 ? n.image_urls[0] : null;
           const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
-          return {
+          const baseEvent = {
             id: `notice-${n.id}`,
             title: n.title,
             summary: n.content ? String(n.content).slice(0, 200) : null,
             startAt: startAtIso,
             endAt: null,
             location: null,
-            tags: ["공지"],
+            tags: [],
             org: { id: "notice", name: n.author || "공지", logoUrl: null },
             sourceUrl: n.url || null,
             posterImageUrl: firstImage,
             ai: null,
           } as any;
-        });
+          try {
+            const tags = await classifyEventTags(baseEvent as any);
+            return { ...baseEvent, tags } as any;
+          } catch {
+            return { ...baseEvent, tags: ["공지"] } as any;
+          }
+        }));
 
-        // 공지 3건 + 기존 이벤트를 묶어서 렌더링
+        // 이벤트 태그 정제/보강
+        const eventsData = await enrichEventsWithTags(Array.isArray(eventsDataRaw) ? eventsDataRaw : [] as any);
+
+        // 공지 3건 + 태그 정제된 이벤트를 묶어서 렌더링
         const merged = [...noticeAsEvents, ...eventsData];
         console.log("[UI] Home:merged feed size", merged.length);
         // 현재 피드 표시 순서 로그: Title과 date만

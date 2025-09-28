@@ -52,7 +52,7 @@ export default function SearchScreen() {
 
   const preloadData = async () => {
     try {
-      const notices = await fetchNoticesCleaned(10);
+      const notices = await fetchNoticesCleaned(200);
       const noticeAsEventsRaw: Event[] = (notices || []).map((n: any) => ({
         id: `notice-${n.id}`,
         title: n.title,

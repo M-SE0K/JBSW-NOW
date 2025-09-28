@@ -187,7 +187,7 @@ export async function presentLocalNotification(title: string, body?: string | nu
 let pollingTimer: any = null;
 let lastSeenIso: string | null = null;
 
-export function startNoticesPolling({ intervalMs = 30_000, batch = 10 }: { intervalMs?: number; batch?: number } = {}) {
+export function startNoticesPolling({ intervalMs = 30_000, batch = 200 }: { intervalMs?: number; batch?: number } = {}) {
   if (pollingTimer) return;
   console.log("[NOTICES] start polling", { intervalMs, batch });
   pollingTimer = setInterval(async () => {

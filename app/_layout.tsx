@@ -17,7 +17,7 @@ export default function RootLayout() {
     setupNotificationHandler();
     // 시뮬레이터/로컬 환경: 로컬 알림 권한만 요청
     requestLocalNotificationPermission();
-    startNoticesPolling({ intervalMs: 5000_000, batch: 10 });
+    startNoticesPolling({ intervalMs: 5000_000, batch: 200 });
     return () => stopNoticesPolling();
   }, []);
 
