@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, StyleSheet, Pressable, ScrollView, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { getLocalNotifications, subscribeLocalNotifications, clearLocalNotifications, type LocalNotificationItem } from "../../src/services/notifications";
+import { getLocalNotifications, subscribeLocalNotifications, clearLocalNotifications, type LocalNotificationItem, markNotificationRead } from "../../src/services/notifications";
 import { testNotices } from "../../src/services/testNotices";
 
 export default function NotificationsScreen() {
@@ -52,13 +52,21 @@ export default function NotificationsScreen() {
       const data = (Array.isArray(testNotices) && testNotices.length > 0)
         ? testNotices
         : await getLocalNotifications();
-      if (mounted) setItems(data);
+      if (mounted) {
+        setItems(data);
+        // 초기 상태: 모두 안읽음으로 리셋
+        setSelectedNotifications(new Set());
+        backgroundColors.forEach((v) => v.setValue(0));
+      }
     })();
     const unsub = subscribeLocalNotifications(async () => {
       const data = (Array.isArray(testNotices) && testNotices.length > 0)
         ? testNotices
         : await getLocalNotifications();
       setItems(data);
+      // 목록 갱신 시에도 안읽음 초기화 유지
+      setSelectedNotifications(new Set());
+      backgroundColors.forEach((v) => v.setValue(0));
     });
     return () => { mounted = false; unsub(); };
   }, []);
@@ -66,17 +74,23 @@ export default function NotificationsScreen() {
   const handleNotificationPress = (index: number) => {
     const newSelected = new Set(selectedNotifications);
     if (newSelected.has(index)) {
-      newSelected.delete(index);
+      // 읽음 → 안읽음 전환 금지: 아무 동작도 하지 않음
+      return;
     } else {
+      // 안읽음 → 읽음 전환 허용
       newSelected.add(index);
+      setSelectedNotifications(newSelected);
+      Animated.timing(backgroundColors[index], {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+      // 전역 읽음 상태 반영
+      const current = (items.length ? items : sampleItems)[index];
+      if (current?.id) {
+        markNotificationRead(current.id);
+      }
     }
-    setSelectedNotifications(newSelected);
-    // 항목 탭 시 배경색 전환 애니메이션(회색 → 흰색)
-    Animated.timing(backgroundColors[index], {
-      toValue: newSelected.has(index) ? 1 : 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
   };
 
   return (

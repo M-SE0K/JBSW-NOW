@@ -24,6 +24,7 @@ export type LocalNotificationItem = {
 
 // AsyncStorage 키(알림 히스토리 저장소)
 const LOCAL_NOTIF_KEY = "localNotifications";
+const LOCAL_NOTIF_READ_KEY = "localNotificationsReadIds";
 
 // 저장소에서 알림 히스토리를 읽어옵니다.
 async function loadLocalNotifications(): Promise<LocalNotificationItem[]> {
@@ -52,6 +53,7 @@ export async function getLocalNotifications(): Promise<LocalNotificationItem[]> 
 export async function clearLocalNotifications(): Promise<void> {
   await saveLocalNotifications([]);
   notifyLocalListeners();
+  await broadcastUnreadCount();
 }
 
 // 새 알림을 히스토리에 앞쪽으로 추가하고 상한 개수(200)를 유지합니다.
@@ -60,6 +62,7 @@ async function appendLocalNotification(item: LocalNotificationItem): Promise<voi
   const next = [item, ...before].slice(0, 200);
   await saveLocalNotifications(next);
   notifyLocalListeners();
+  await broadcastUnreadCount();
 }
 
 // 알림 히스토리 변경 구독(알림 화면이 사용)
@@ -76,6 +79,60 @@ function notifyLocalListeners() {
   for (const l of Array.from(localListeners)) {
     try { l(); } catch {}
   }
+}
+
+// ===== 읽음 상태 저장/구독 =====
+type UnreadListener = (count: number) => void;
+const unreadListeners = new Set<UnreadListener>();
+
+async function loadReadIds(): Promise<Set<string>> {
+  try {
+    const raw = await AsyncStorage.getItem(LOCAL_NOTIF_READ_KEY);
+    const arr: string[] = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+async function saveReadIds(ids: Set<string>): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LOCAL_NOTIF_READ_KEY, JSON.stringify(Array.from(ids)));
+  } catch {}
+}
+
+export async function getReadIds(): Promise<Set<string>> {
+  return await loadReadIds();
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  const ids = await loadReadIds();
+  if (!ids.has(id)) {
+    ids.add(id);
+    await saveReadIds(ids);
+    await broadcastUnreadCount();
+  }
+}
+
+export async function getUnreadCount(): Promise<number> {
+  const [items, readIds] = await Promise.all([loadLocalNotifications(), loadReadIds()]);
+  return items.reduce((acc, it) => acc + (readIds.has(it.id) ? 0 : 1), 0);
+}
+
+async function broadcastUnreadCount() {
+  const count = await getUnreadCount();
+  for (const l of Array.from(unreadListeners)) {
+    try { l(count); } catch {}
+  }
+}
+
+export function subscribeUnreadCount(listener: UnreadListener): () => void {
+  unreadListeners.add(listener);
+  // 즉시 1회 알림
+  getUnreadCount().then((c) => {
+    try { listener(c); } catch {}
+  });
+  return () => unreadListeners.delete(listener);
 }
 
 // 앱 전역 알림 핸들러 등록
