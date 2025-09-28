@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlatList, RefreshControl, View, Button, TextInput, Pressable, ActivityIndicator, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +15,7 @@ import { enrichEventsWithTags } from "../../src/services/tags";
 import { normalize, tokenize, searchByAllWords } from "../../src/services/search";
 import { Event } from "../../src/types";
 import { useRouter } from "expo-router";
+import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
 
 export default function EventsScreen() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function EventsScreen() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [allItems, setAllItems] = useState<any[]>([]);
+  const [favTick, setFavTick] = useState<number>(0);
 
   // 새로운 소식 데이터 로드 (notices만 사용, date 내림차순)
   useEffect(() => {
@@ -55,6 +58,25 @@ export default function EventsScreen() {
       }
     })();
   }, []);
+
+  // 즐겨찾기 변경 구독: 재조회 없이 카드 상태만 리렌더
+  useEffect(() => {
+    ensureFavUser();
+    const unsub = subscribeFavorites(() => setFavTick((v) => v + 1));
+    return () => unsub();
+  }, []);
+
+  // 화면 포커스 시 로컬 스토리지에서 즐겨찾기 상태 재하이드레이션
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          await hydrateFavs();
+        } catch {}
+      })();
+      return () => {};
+    }, [])
+  );
 
   // 현재 렌더링 중인 목록의 상위 3개(title/summary/id) 로그
   useEffect(() => {
@@ -142,6 +164,7 @@ export default function EventsScreen() {
                 onPressItem={(ev: any) => {
                   console.log("[UI] search result press", ev.id);
                 }}
+                extraData={favTick}
               />
             ) : (
               <View style={styles.emptyState}>
@@ -158,6 +181,7 @@ export default function EventsScreen() {
             onPressItem={(ev: any) => {
               console.log("[UI] news press", ev.id);
             }}
+            extraData={favTick}
           />
         )}
       </View>
