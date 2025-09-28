@@ -11,9 +11,10 @@ const ITEM_HEIGHT = Math.round(width * 9 / 16);
 type Props = {
   limit?: number;
   onPressItem?: (event: Event) => void;
+  imageUrls?: string[]; // 하드코딩된 배너 이미지 URL 배열 (제공 시 이 값을 우선 사용)
 };
 
-export const BannerSlider = ({ limit = 10, onPressItem }: Props) => {
+export const BannerSlider = ({ limit = 10, onPressItem, imageUrls }: Props) => {
   const [items, setItems] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -23,18 +24,32 @@ export const BannerSlider = ({ limit = 10, onPressItem }: Props) => {
     let mounted = true;
     (async () => {
       try {
+        // 1) imageUrls가 제공되면 이를 우선 사용
+        if (imageUrls && imageUrls.length > 0) {
+          const nowIso = new Date().toISOString();
+          const hardcoded: Event[] = imageUrls.map((url, i) => ({
+            id: `hardcoded-${i}`,
+            title: "",
+            startAt: nowIso,
+            org: { id: "hardcoded", name: "hardcoded", logoUrl: null },
+            sourceUrl: null,
+            posterImageUrl: url,
+          }));
+          if (mounted) setItems(hardcoded.slice(0, limit));
+          return;
+        }
+
+        // 2) 기본: 최근 공지형 배너를 가져와 사용
         console.log("[UI] BannerSlider:fetch start", { limit });
         const notices = await fetchRecentNoticeBanners(limit);
         const onlyNotices = notices.filter(d => !!d.posterImageUrl);
-        //console.log("[UI] BannerSlider:fetch done (notices only)", { notices: notices.length, used: onlyNotices.length });
-        //console.log("[UI] BannerSlider:items preview", onlyNotices.slice(0, 5).map((m) => ({ id: m.id, posterImageUrl: m.posterImageUrl })));
         if (mounted) setItems(onlyNotices.slice(0, limit));
       } finally {
         if (mounted) setLoading(false);
       }
     })();
     return () => { mounted = false; console.log("[UI] BannerSlider:unmount"); };
-  }, [limit]);
+  }, [limit, imageUrls]);
 
   useEffect(() => {
     if (!items.length) return;

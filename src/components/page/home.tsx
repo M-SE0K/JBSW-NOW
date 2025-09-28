@@ -142,10 +142,16 @@ export default function Home() {
           <View>
             {/* 상단 배너 영역 */}
             <View style={{ marginTop: 12, borderRadius: 14, overflow: "hidden" }}>
-              <BannerSlider limit={8} onPressItem={(ev) => {
-                // TODO: 상세 페이지로 네비게이션 연결
-                //console.log("[UI] BannerSlider:press", ev.id);
-              }} />
+              <BannerSlider
+                imageUrls={[
+                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1756799978_8_uk3XLIRb1eoAs5mFiqZR_C5FQz5bs8WzFzk5iYy68b6a3ea.jpg",
+                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1753667195_ZPaSl1QTX9Dcu5Q7PpBj6Di9VFUFNjbRQw3HNxs8j6886d67b.jpg",
+                  "https://img2.stibee.com/104257_3015028_1758707911021760055.png",
+                  "https://csai.jbnu.ac.kr/CrossEditor/binary/images/000858/20250926092439830_MFYZGK2M.png",
+                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1756961870_z2DhygbkGkgi4_DhICuEXjBXX6NJt3r3oZj8YfFhb68b91c4e.jpg",
+                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1758521361_Pgm2cRhLVDaidx81VpefRHzFE8_VIZK6W2eKuxu2m68d0e811.png",
+                ]}
+              />
             </View>
             {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
             <SectionHeader title="새로운 소식" onPressMore={handleMorePress} />
