@@ -1,11 +1,12 @@
 import React from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
 import SectionHeader from "../SectionHeader";
 import BannerSlider from "../BannerSlider";
 import { useEffect, useState } from "react";
-import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites } from "../../services/favorites";
+import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import EventsList from "../EventsList";
 
@@ -96,6 +97,18 @@ export default function Home() {
     const unsub = subscribeFavorites(() => setFavTick((v) => v + 1));
     return () => unsub();
   }, []);
+
+  // 화면 포커스 시 로컬 스토리지에서 즐겨찾기 상태 재하이드레이션
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          await hydrateFavs();
+        } catch {}
+      })();
+      return () => {};
+    }, [])
+  );
 
   // 다양한 날짜 문자열(예: 2025.07.30, 2025. 7. 28.(월), ISO 등)을 ISO로 정규화
   function deriveIsoDate(input?: string | null): string {
