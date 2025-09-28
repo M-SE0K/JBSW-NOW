@@ -74,7 +74,7 @@ export async function saveBannerImage(params: SaveBannerImageParams): Promise<{ 
  *   2) hasImage: true 같은 플래그 필드를 저장해 단일 필드 조건만 사용
  *   3) 콘솔에서 제안하는 복합 인덱스 생성
  */
-export async function fetchRecentBannerImages(maxCount: number = 10): Promise<BannerImageDoc[]> {
+export async function fetchRecentBannerImages(maxCount: number = 200): Promise<BannerImageDoc[]> {
   const db = getFirestore();
   const col = collection(db, "bannerImage");
   const q = query(col, where("imageUrl", "!=", null), orderBy("createdAt", "desc"), limit(maxCount));

@@ -18,7 +18,7 @@ import { formatRowTextForPost, cleanCrawledText } from "../utils/textCleaner";
  */
 
 // 최근 14일 이내에 생성된 문서 중 포스터 이미지가 있는 항목을 가져옵니다.
-export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Event[]> {
+export async function fetchRecentPosterEvents(maxCount: number = 200): Promise<Event[]> {
   const db = getFirestore();
   const eventsRef = collection(db, "events");
 
@@ -83,7 +83,7 @@ export async function fetchRecentPosterEvents(maxCount: number = 10): Promise<Ev
 
 // 알림(notification) 컬렉션에서 배너로 사용할 이미지가 포함된 항목을 조회
 // 다양한 필드명을 허용: imageUrl | image_url | image | bannerImageUrl | image_urls[0]
-export async function fetchRecentNotificationBanners(maxCount: number = 10): Promise<Event[]> {
+export async function fetchRecentNotificationBanners(maxCount: number = 200): Promise<Event[]> {
   const db = getFirestore();
   const ref = collection(db, "notifications");
   // date 기준 최근 순, 실패 시 정렬 없이 제한만 적용
@@ -217,7 +217,7 @@ export async function fetchRecentNoticeBanners(maxCount: number = 10): Promise<E
 }
 
 // 인기소식 검색 함수
-export async function searchHotNews(searchTerm: string, maxCount: number = 20): Promise<Event[]> {
+export async function searchHotNews(searchTerm: string, maxCount: number = 200): Promise<Event[]> {
   const db = getFirestore();
   const eventsRef = collection(db, "events");
   const q = query(eventsRef, orderBy("date", "desc"), limit(maxCount));
@@ -335,7 +335,7 @@ export async function clearHotRecentSearches(): Promise<void> {
 }
 
 // 최근 소식(이벤트) 피드: date DESC 상위 N개
-export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
+export async function fetchRecentNews(maxCount: number = 200): Promise<Event[]> {
   try {
     const db = getFirestore();
     const eventsRef = collection(db, "events");
@@ -370,7 +370,7 @@ export async function fetchRecentNews(maxCount: number = 5): Promise<Event[]> {
 }
 
 // 최근 N일 이내 date 기준으로 최신 소식 조회
-export async function fetchRecentNewsWithinDays(days: number = 30, maxCount: number = 50): Promise<Event[]> {
+export async function fetchRecentNewsWithinDays(days: number = 30, maxCount: number = 200): Promise<Event[]> {
   try {
     const db = getFirestore();
     const eventsRef = collection(db, "events");
@@ -403,7 +403,7 @@ export async function fetchRecentNewsWithinDays(days: number = 30, maxCount: num
 }
 
 // startAt(또는 endAt) "날짜 문자열"을 기준으로 최근 N일 내 이벤트를 가져옵니다(클라이언트 필터).
-export async function fetchRecentNewsByDateWithinDays(days: number = 30, maxCount: number = 100): Promise<Event[]> {
+export async function fetchRecentNewsByDateWithinDays(days: number = 30, maxCount: number = 200): Promise<Event[]> {
   try {
     const db = getFirestore();
     const eventsRef = collection(db, "events");
@@ -492,7 +492,7 @@ export type Notice = {
   updatedAt?: any;
 };
 
-export async function fetchNoticesCleaned(maxCount: number = 20): Promise<Notice[]> {
+export async function fetchNoticesCleaned(maxCount: number = 200): Promise<Notice[]> {
   const db = getFirestore();
   const ref = collection(db, "notices");
 
