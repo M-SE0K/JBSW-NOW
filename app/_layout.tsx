@@ -4,6 +4,7 @@ import { useColorScheme, Text, View, Pressable } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryProvider } from "../src/state/queryClient";
+import { setupNotificationHandler, startNoticesPolling, stopNoticesPolling, requestLocalNotificationPermission } from "../src/services/notifications";
 import { setupAppFocus } from "../src/state/queryClient";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeaderRight, AppHeaderTitle } from "../src/components/AppHeader";
@@ -13,6 +14,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     setupAppFocus();
+    setupNotificationHandler();
+    // 시뮬레이터/로컬 환경: 로컬 알림 권한만 요청
+    requestLocalNotificationPermission();
+    startNoticesPolling({ intervalMs: 5000_000, batch: 10 });
+    return () => stopNoticesPolling();
   }, []);
 
   return (
