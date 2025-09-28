@@ -20,8 +20,8 @@ export default function FavoritesScreen() {
     try {
       await ensureUserId();
       const [notices, recentEvents] = await Promise.all([
-        fetchNoticesCleaned(80),
-        fetchRecentNewsWithinDays(90, 300),
+        fetchNoticesCleaned(200),
+        fetchRecentNewsWithinDays(90, 200),
       ]);
       const mappedNotices: Event[] = (notices || []).map((n: any): Event => ({
         id: `notice-${n.id}`,

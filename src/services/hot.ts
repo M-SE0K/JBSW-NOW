@@ -46,7 +46,7 @@ export async function incrementHotClick(payload: { key: string; title?: string |
   console.log("[HOT] increment", { id: key, prev, next: prev + 1 });
 }
 
-export async function fetchHotTop(maxCount: number = 20): Promise<Event[]> {
+export async function fetchHotTop(maxCount: number = 200): Promise<Event[]> {
   const db = getFirestore();
   const col = collection(db, COL);
   const q = query(col, orderBy("count", "desc"), limit(maxCount));
