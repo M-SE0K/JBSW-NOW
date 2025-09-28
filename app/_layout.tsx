@@ -8,6 +8,7 @@ import { setupNotificationHandler, startNoticesPolling, stopNoticesPolling, requ
 import { setupAppFocus } from "../src/state/queryClient";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeaderRight, AppHeaderTitle } from "../src/components/AppHeader";
+import CustomTabBar from "../src/components/CustomTabBar";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -31,6 +32,7 @@ export default function RootLayout() {
               tabBarActiveTintColor: colorScheme === "dark" ? "#fff" : "#111",
               tabBarStyle: { backgroundColor: colorScheme === "dark" ? "#111" : "#fff" },
             }}
+            tabBar={(props) => <CustomTabBar {...props} />}
           >
             /* 헤더 영역 */
             <Tabs.Screen
