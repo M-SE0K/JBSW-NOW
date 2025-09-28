@@ -1,5 +1,7 @@
 import type { Event } from "../types";
 import { analyzePosterImage, analyzePosterText } from "../api/gemini/gemini";
+import "../db/firebase";
+import { getFirestore, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 export const ALLOWED_TAGS = [
   "수강",
@@ -17,6 +19,9 @@ export const ALLOWED_TAGS = [
 export type AllowedTag = typeof ALLOWED_TAGS[number];
 
 const cache = new Map<string, AllowedTag[]>();
+
+// 최근 동기화된 기준 해시를 보관해 중복 쓰기를 방지합니다.
+const lastSyncedBasisHashByEventId = new Map<string, string>();
 
 function clean(text?: string | null): string {
   if (!text || typeof text !== "string") return "";
@@ -137,13 +142,84 @@ export async function enrichEventsWithTags(events: Event[]): Promise<Event[]> {
     events.map(async (ev) => {
       try {
         const tags = await classifyEventTags(ev);
-        return { ...ev, tags } as Event;
+        const updated: Event = { ...ev, tags } as Event;
+        // Firestore 동기화는 비차단으로 진행합니다.
+        try {
+          // 원본(ev)의 태그와 새 태그를 비교해 필요 시 동기화
+          maybeSyncTagsToFirestore(ev, tags);
+        } catch {}
+        return updated;
       } catch {
         return { ...ev, tags: ["일반"] } as Event;
       }
     })
   );
   return enriched;
+}
+
+
+// === Firestore 동기화 유틸 ===
+function computeBasisHash(ev: Event): string {
+  const basis = [ev.title || "", ev.summary || "", ev.posterImageUrl || ""].join("\n");
+  // djb2 해시 (간단, 빠름)
+  let h = 5381;
+  for (let i = 0; i < basis.length; i++) {
+    h = ((h << 5) + h) + basis.charCodeAt(i);
+    h = h | 0;
+  }
+  return String(h >>> 0);
+}
+
+function arraysEqualIgnoreOrder(a: readonly string[] | undefined, b: readonly string[] | undefined): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort();
+  const sb = [...b].sort();
+  for (let i = 0; i < sa.length; i++) if (sa[i] !== sb[i]) return false;
+  return true;
+}
+
+function isPersistableEventId(id: string): boolean {
+  // Firestore `events` 컬렉션 문서로 추정되는 ID만 허용
+  if (id.startsWith("notice-")) return false;
+  if (id.startsWith("notif-")) return false;
+  return true;
+}
+
+async function syncTagsToFirestore(ev: Event, tags: AllowedTag[], basisHash: string): Promise<void> {
+  const db = getFirestore();
+  const ref = doc(db, "events", ev.id);
+  const payload: any = {
+    tags,
+    tagMeta: {
+      source: "client-gemini",
+      modelVersion: "gemini-2.0-flash-lite",
+      basisHash,
+      updatedAt: serverTimestamp(),
+    },
+    updatedAt: serverTimestamp(),
+  };
+  await updateDoc(ref, payload);
+}
+
+function maybeSyncTagsToFirestore(ev: Event, tags: AllowedTag[]): void {
+  try {
+    if (!ev?.id || !isPersistableEventId(ev.id)) return;
+    const normalized = (tags || []).map((t) => String(t).trim()).filter(Boolean);
+    if (normalized.length === 0) return;
+    if (arraysEqualIgnoreOrder(ev.tags || [], normalized)) {
+      return;
+    }
+    const basisHash = computeBasisHash(ev);
+    const last = lastSyncedBasisHashByEventId.get(ev.id);
+    if (last && last === basisHash) return;
+    lastSyncedBasisHashByEventId.set(ev.id, basisHash);
+    // 비동기 실행(에러는 콘솔에만 기록)
+    void syncTagsToFirestore(ev, normalized as AllowedTag[], basisHash).catch((e) => {
+      console.warn("[TAGS] syncTagsToFirestore error", { id: ev.id, e });
+    });
+  } catch {}
 }
 
 
