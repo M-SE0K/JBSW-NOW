@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ActivityIndicator } from "react-native";
@@ -9,7 +9,7 @@ import { Event } from "../../src/types";
 import EventCard from "../../src/components/EventCard";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
 import { enrichEventsWithTags } from "../../src/services/tags";
-import { searchByAllWords, normalize } from "../../src/services/search";
+import { searchByAllWords, normalize, extractHashtags, filterItemsByAllTags } from "../../src/services/search";
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -19,6 +19,11 @@ export default function SearchScreen() {
   const [allItems, setAllItems] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const RECENT_KEY = "recentSearches";
+
+  const isHashtagMode = useMemo(() => {
+    const q = normalize(searchQuery);
+    return extractHashtags(q).length > 0;
+  }, [searchQuery]);
 
   // 최근 검색어 로드 + 데이터 프리로드(메모리)
   useEffect(() => {
@@ -86,7 +91,10 @@ export default function SearchScreen() {
       setRecentSearches(updated);
     } catch {}
 
-    const found = searchByAllWords(allItems as any, q, ["title", "summary"] as any);
+    const tags = extractHashtags(q);
+    const found = tags.length > 0
+      ? filterItemsByAllTags(allItems as any, tags)
+      : searchByAllWords(allItems as any, q, ["title", "summary", "tags"] as any);
     setIsSearching(true);
     setResults(found);
   };
@@ -115,8 +123,8 @@ export default function SearchScreen() {
     <SafeAreaView style={styles.container}>
       {/* 검색 헤더 */}
       <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+        <View style={[styles.searchContainer, isHashtagMode && styles.searchContainerTagActive]}>
+          <Ionicons name="search" size={20} color={isHashtagMode ? "#7C3AED" : "#999"} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="검색"
@@ -125,6 +133,12 @@ export default function SearchScreen() {
             onSubmitEditing={handleSearch}
             returnKeyType="search"
           />
+          {isHashtagMode ? (
+            <View style={styles.tagModeBadge}>
+              <Ionicons name="pricetag" size={14} color="#7C3AED" />
+              <Text style={styles.tagModeText}>태그</Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -216,8 +230,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#f5f5f5",
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "transparent",
     paddingHorizontal: 16,
     paddingVertical: 8,
+  },
+  searchContainerTagActive: {
+    borderColor: "#E9D5FF",
+    backgroundColor: "#FAF5FF",
   },
   searchIcon: {
     marginRight: 8,
@@ -226,6 +246,21 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#000",
+  },
+  tagModeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: "#F3E8FF",
+    marginLeft: 8,
+  },
+  tagModeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#7C3AED",
   },
   content: {
     flex: 1,

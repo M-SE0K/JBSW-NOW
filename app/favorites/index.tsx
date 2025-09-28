@@ -92,7 +92,7 @@ export default function FavoritesScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
       <View style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
-          <Text style={{ fontSize: 16, fontWeight: "600", color: "#000" }}>즐겨찾기</Text>
+          <Text style={{ fontSize: 20, fontWeight: "700", color: "#000" }}>즐겨찾기</Text>
         </View>
 
         {loading ? (

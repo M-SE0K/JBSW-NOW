@@ -53,3 +53,23 @@ export function sortByDateDesc<T>(items: T[], getDateString: (item: T) => string
 }
 
 
+// === Hashtag 전용 ===
+export function extractHashtags(query: string): string[] {
+  const tokens = tokenize(query);
+  return tokens
+    .filter((t) => t.startsWith("#") && t.length > 1)
+    .map((t) => t.slice(1))
+    .map((t) => normalize(t))
+    .filter(Boolean);
+}
+
+export function filterItemsByAllTags<T extends { tags?: string[] }>(items: T[], tags: string[]): T[] {
+  if (!tags || tags.length === 0) return items;
+  const wanted = tags.map((t) => normalize(t));
+  return items.filter((it) => {
+    const own = (it.tags || []).map((t) => normalize(t));
+    return wanted.every((w) => own.includes(w));
+  });
+}
+
+
