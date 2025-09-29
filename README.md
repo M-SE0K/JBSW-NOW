@@ -31,7 +31,7 @@
 
 ### 프로젝트 구조
 
-<img width="638" height="725" alt="figma" src="https://github.com/user-attachments/assets/c755523a-c52d-408c-8fdc-a0b4e86cd588" />
+<img width="500" height="600" alt="figma" src="https://github.com/user-attachments/assets/c755523a-c52d-408c-8fdc-a0b4e86cd588" />
 
 ---
 
