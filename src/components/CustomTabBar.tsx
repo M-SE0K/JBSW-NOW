@@ -56,7 +56,7 @@ export default function CustomTabBar(props: any) {
         alignItems: "center",
         justifyContent: "space-between",
         backgroundColor: "#fff",
-        paddingVertical: 8,
+        paddingVertical: 15,
         borderTopWidth: 1,
         borderTopColor: "#eaeaea",
       }}
@@ -67,7 +67,7 @@ export default function CustomTabBar(props: any) {
           pointerEvents="none"
           style={{
             position: "absolute",
-            bottom: 4,
+            bottom: 15,
             left: 0,
             width: tabWidth,
             transform: [{ translateX: indicatorX }],
