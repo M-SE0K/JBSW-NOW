@@ -31,10 +31,17 @@
 > 
 
 ### 프로젝트 구조
+
 <img width="638" height="725" alt="figma" src="https://github.com/user-attachments/assets/c755523a-c52d-408c-8fdc-a0b4e86cd588" />
 
 ---
 
+<img width="330" height="800" alt="Simulator Screenshot - iPhone 15 Pro - 2025-09-29 at 21 17 19" src="https://github.com/user-attachments/assets/5ea12025-644c-46b7-82ef-19586d1e074a" /><img width="330" height="800" alt="Simulator Screenshot - iPhone 15 Pro - 2025-09-29 at 21 11 26" src="https://github.com/user-attachments/assets/34d58f33-1b4f-40ed-a31a-a350260c9658" /><img width="330" height="800" alt="Simulator Screenshot - iPhone 15 Pro - 2025-09-29 at 21 11 30" src="https://github.com/user-attachments/assets/8bfccdab-f41c-4ee4-a679-51ee500a10af" />
+<img width="330" height="800" alt="Simulator Screenshot - iPhone 15 Pro - 2025-09-29 at 21 13 19" src="https://github.com/user-attachments/assets/cb8f98e9-5cca-4f1d-9e97-595c639680b2" /><img width="330" height="800" alt="Simulator Screenshot - iPhone 15 Pro - 2025-09-29 at 21 13 22" src="https://github.com/user-attachments/assets/9707f336-b6ee-4aed-8be0-6304524acc81" /><img width="330" height="800" alt="Simulator Screenshot - iPhone 15 Pro - 2025-09-29 at 21 13 27" src="https://github.com/user-attachments/assets/22fa689c-3679-4864-a94a-36e83e1cd1be" />
+<img width="=330" height="800" alt="Simulator Screenshot - iPhone 15 Pro - 2025-09-29 at 21 13 39" src="https://github.com/user-attachments/assets/2ebebaa7-a3b1-4c79-90f8-cc3ab555e288" /><img width="330" height="800" alt="Simulator Screenshot - iPhone 15 Pro - 2025-09-29 at 21 13 43" src="https://github.com/user-attachments/assets/dfbb0694-54e5-4842-9048-a0977abb7ffa" />
+
+
+---
 ## 개발환경 구축 및 실행
 
 ### 프로젝트 클론
