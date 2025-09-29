@@ -1,9 +1,9 @@
 ## Team 안진마
 
 > 
-**`@do-ttery` : UI/UX 기획 및 디자인, 프론트엔드 개발**
+**`@do-ttery` : UI/UX 기획 및 디자인, 프론트엔드 개발**  **https://github.com/do-ttery**
 
-**`@cheoleon` : 백엔드 개발 담당**
+**`@cheoleon` : 백엔드 개발 담당** **https://github.com/St2usy/crawler.git**
 
 **`@M-SE0K` : 풀스택 개발 담당**
 > 
