@@ -30,7 +30,7 @@ export default function EventsScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const notices = await fetchNoticesCleaned(10);
+        const notices = await fetchNoticesCleaned(100);
         const noticeAsEventsRaw = (notices || []).map((n: any) => {
           const startAtIso = deriveIsoDate(n.date || n.crawled_at || n.firebase_created_at);
           return {
@@ -51,7 +51,7 @@ export default function EventsScreen() {
         const noticeAsEvents = await enrichEventsWithTags(noticeAsEventsRaw as any);
         noticeAsEvents.sort((a: any, b: any) => (toDateMsFromString(b.startAt) - toDateMsFromString(a.startAt)));
         setAllItems(noticeAsEvents);
-        setNews(noticeAsEvents.slice(0, 5));
+        setNews(noticeAsEvents.slice(0, 100));
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
         setNews([]);
