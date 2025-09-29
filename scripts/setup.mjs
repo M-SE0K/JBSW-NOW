@@ -36,7 +36,25 @@ async function main() {
     console.log('Created .env');
   }
 
-  // 4) Watchman 재인덱싱 (macOS + watchman 존재 시)
+  // 4) express 의존성 보증 설치 (누락 시 추가)
+  try {
+    const pkgPath = path.join(projectRoot, 'package.json');
+    const pkgRaw = await fs.readFile(pkgPath, 'utf8');
+    const pkg = JSON.parse(pkgRaw);
+    const allDeps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+    const needExpress = !allDeps['express'];
+    const needTypesExpress = !allDeps['@types/express'];
+    const toInstall = [];
+    if (needExpress) toInstall.push('express@^5.1.0');
+    if (needTypesExpress) toInstall.push('@types/express@^4.17.21');
+    if (toInstall.length > 0) {
+      run(`npm install ${toInstall.join(' ')}`);
+    }
+  } catch (e) {
+    console.warn('Failed to verify/install express deps:', e?.message || e);
+  }
+
+  // 5) Watchman 재인덱싱 (macOS + watchman 존재 시)
   const isMac = process.platform === 'darwin';
   const hasWatchman = spawnSync('which', ['watchman']).status === 0;
   if (isMac && hasWatchman) {
@@ -47,7 +65,8 @@ async function main() {
     } catch {}
   }
 
-  // 5) expo-doctor로 상태 점검 (있으면 진행)
+  
+  // 6) expo-doctor로 상태 점검 (있으면 진행)
   try {
     run('npx --yes expo-doctor');
   } catch {
@@ -58,6 +77,7 @@ async function main() {
   console.log('- Start dev server: npx expo start -c');
   console.log('- iOS: npx expo run:ios');
   console.log('- Android: npx expo run:android');
+  console.log('- Proxy server: npm run proxy');
 }
 
 main().catch((err) => {
