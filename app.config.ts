@@ -14,6 +14,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: "com.jbnu.jbswnow",
   },
   android: {
+    package: "com.jbnu.jbswnow",
     adaptiveIcon: {
       backgroundColor: "#ffffff",
     },

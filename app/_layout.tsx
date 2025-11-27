@@ -76,6 +76,22 @@ export default function RootLayout() {
               }}
             />
             {/* 탭은 3개만 노출: 나머지 라우트는 탭 바에서 숨김 */}
+            <Tabs.Screen 
+              name="auth/login" 
+              options={{ 
+                href: null,
+                headerShown: false,
+                tabBarStyle: { display: "none" }
+              }} 
+            />
+            <Tabs.Screen 
+              name="auth/signup" 
+              options={{ 
+                href: null,
+                headerShown: false,
+                tabBarStyle: { display: "none" }
+              }} 
+            />
             <Tabs.Screen name="(modals)/filters" options={{ href: null }} />
             <Tabs.Screen name="chat/index" options={{ href: null }} />
             <Tabs.Screen 
