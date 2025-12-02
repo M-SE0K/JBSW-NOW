@@ -110,14 +110,14 @@ export async function hydrateFavorites(): Promise<void> {
         if (merged.size !== inMemoryFavorites.size) {
           inMemoryFavorites = merged;
           await persistFavorites(true); // 병합된 내용 다시 저장 (로컬+클라우드)
-          notify();
+  notify();
         }
       }
     } catch (e) {
       console.warn("[FAV] firestore sync error", e);
     }
-  }
-  
+}
+
   console.log("[FAV] hydrate completed", { userId: uid, count: inMemoryFavorites.size });
 }
 

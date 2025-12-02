@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
-import { Tabs, Link } from "expo-router";
-import { useColorScheme, Text, View, Pressable } from "react-native";
+import { Tabs } from "expo-router";
+import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryProvider } from "../src/state/queryClient";
@@ -9,6 +9,7 @@ import { setupAppFocus } from "../src/state/queryClient";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeaderRight, AppHeaderTitle } from "../src/components/AppHeader";
 import CustomTabBar from "../src/components/CustomTabBar";
+import ChatShortcutOverlay from "../src/components/ChatShortcutOverlay";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -24,7 +25,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+      <SafeAreaProvider style={{ flex: 1 }}>
         <QueryProvider>
           <Tabs
             screenOptions={{
@@ -34,7 +35,7 @@ export default function RootLayout() {
             }}
             tabBar={(props) => <CustomTabBar {...props} />}
           >
-            /* 헤더 영역 */
+            {/* 헤더 영역 */}
             <Tabs.Screen
               name="index"
               options={{
@@ -51,8 +52,8 @@ export default function RootLayout() {
                 ),
               }}
             />
-            
-            /* 즐겨찾기 */
+
+            {/* 즐겨찾기 */}
             <Tabs.Screen
               name="favorites/index"
               options={{
@@ -64,7 +65,7 @@ export default function RootLayout() {
               }}
             />
 
-            /* 인기 게시물 */
+            {/* 인기 게시물 */}
             <Tabs.Screen
               name="hot/index"
               options={{
@@ -76,62 +77,62 @@ export default function RootLayout() {
               }}
             />
             {/* 탭은 3개만 노출: 나머지 라우트는 탭 바에서 숨김 */}
-            <Tabs.Screen 
-              name="auth/login" 
-              options={{ 
+            <Tabs.Screen
+              name="auth/login"
+              options={{
                 href: null,
                 headerShown: false,
-                tabBarStyle: { display: "none" }
-              }} 
+                tabBarStyle: { display: "none" },
+              }}
             />
-            <Tabs.Screen 
-              name="auth/signup" 
-              options={{ 
+            <Tabs.Screen
+              name="auth/signup"
+              options={{
                 href: null,
                 headerShown: false,
-                tabBarStyle: { display: "none" }
-              }} 
+                tabBarStyle: { display: "none" },
+              }}
             />
             <Tabs.Screen name="(modals)/filters" options={{ href: null }} />
             <Tabs.Screen name="chat/index" options={{ href: null }} />
-            <Tabs.Screen 
-              name="events/index" 
-              options={{ 
+            <Tabs.Screen
+              name="events/index"
+              options={{
                 href: null,
-                headerShown: false 
-              }} 
+                headerShown: false,
+              }}
             />
             <Tabs.Screen name="events/[id]" options={{ href: null }} />
             <Tabs.Screen name="orgs/index" options={{ href: null }} />
             <Tabs.Screen name="orgs/[orgId]" options={{ href: null }} />
-            <Tabs.Screen 
-              name="notification/index" 
-              options={{ 
+            <Tabs.Screen
+              name="notification/index"
+              options={{
                 href: null,
-                headerShown: false 
-              }} 
+                headerShown: false,
+              }}
             />
-            <Tabs.Screen 
-              name="notification/settings" 
-              options={{ 
+            <Tabs.Screen
+              name="notification/settings"
+              options={{
                 href: null,
-                headerShown: false 
-              }} 
+                headerShown: false,
+              }}
             />
-                   <Tabs.Screen 
-                     name="search/index" 
-                     options={{ 
-                       href: null,
-                       headerShown: false 
-                     }} 
-                   />
-                   <Tabs.Screen 
-                     name="settings/index" 
-                     options={{ 
-                       href: null,
-                       headerShown: false 
-                     }} 
-                   />
+            <Tabs.Screen
+              name="search/index"
+              options={{
+                href: null,
+                headerShown: false,
+              }}
+            />
+            <Tabs.Screen
+              name="settings/index"
+              options={{
+                href: null,
+                headerShown: false,
+              }}
+            />
             {/* 테스트 라우트 */}
             <Tabs.Screen
               name="test/local-image"
@@ -143,6 +144,7 @@ export default function RootLayout() {
             <Tabs.Screen name="test/firebase" options={{ href: null }} />
           </Tabs>
         </QueryProvider>
+        <ChatShortcutOverlay />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
