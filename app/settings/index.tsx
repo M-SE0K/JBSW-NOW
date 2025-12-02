@@ -193,7 +193,7 @@ export default function SettingsScreen() {
               await ensureUserId();
               const uid = getActiveUserIdSync();
               await clearFavorites();
-              await hydrateFavorites();
+                await hydrateFavorites();
               console.log("[SETTINGS] cleared favorites", { userId: uid });
               showAlert("완료", "캐시 데이터가 삭제되었습니다.");
             } catch (e) {
