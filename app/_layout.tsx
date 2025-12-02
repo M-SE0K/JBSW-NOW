@@ -94,7 +94,13 @@ export default function RootLayout() {
               }}
             />
             <Tabs.Screen name="(modals)/filters" options={{ href: null }} />
-            <Tabs.Screen name="chat/index" options={{ href: null }} />
+            <Tabs.Screen
+              name="chat/index"
+              options={{
+                href: null,
+                headerShown: false,
+              }}
+            />
             <Tabs.Screen
               name="events/index"
               options={{
