@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, View, Pressable, useColorScheme } from "react-native";
-import { router } from "expo-router";
+import { router, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -8,6 +8,11 @@ const ChatShortcutOverlay = () => {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const isDark = colorScheme === "dark";
+  const pathname = usePathname();
+
+  if (pathname?.startsWith("/chat")) {
+    return null;
+  }
 
   return (
     <View pointerEvents="box-none" style={[StyleSheet.absoluteFillObject, styles.overlay]}>
