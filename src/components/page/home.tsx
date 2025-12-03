@@ -1,5 +1,4 @@
 import React from "react";
-import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
@@ -105,20 +104,14 @@ export default function Home() {
   useEffect(() => {
     ensureFavUser();
     const unsub = subscribeFavorites(() => setFavTick((v) => v + 1));
+    // 화면 마운트 시 로컬 스토리지에서 즐겨찾기 상태 재하이드레이션
+    (async () => {
+      try {
+        await hydrateFavs();
+      } catch {}
+    })();
     return () => unsub();
   }, []);
-
-  // 화면 포커스 시 로컬 스토리지에서 즐겨찾기 상태 재하이드레이션
-  useFocusEffect(
-    React.useCallback(() => {
-      (async () => {
-        try {
-          await hydrateFavs();
-        } catch {}
-      })();
-      return () => {};
-    }, [])
-  );
 
   // 다양한 날짜 문자열(예: 2025.07.30, 2025. 7. 28.(월), ISO 등)을 ISO로 정규화
   function deriveIsoDate(input?: string | null): string {

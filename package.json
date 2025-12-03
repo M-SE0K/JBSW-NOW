@@ -10,7 +10,8 @@
     "ios": "expo run:ios",
     "android": "expo run:android",
     "setup": "node scripts/setup.mjs",
-    "proxy": "node server/proxy.js"
+    "proxy": "node server/proxy.js",
+    "ollama:pull": "node scripts/download-ollama-model.mjs"
   },
   "keywords": [],
   "author": "",
