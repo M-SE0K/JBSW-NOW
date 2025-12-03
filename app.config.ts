@@ -27,6 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     typedRoutes: true,
   },
   plugins: [
+    "expo-dev-client",
     ["expo-router"],
     ["expo-notifications"],
     ["expo-secure-store"],
