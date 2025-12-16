@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
-import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlatList, RefreshControl, View, Button, TextInput, Pressable, ActivityIndicator, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -66,17 +65,14 @@ export default function EventsScreen() {
     return () => unsub();
   }, []);
 
-  // 화면 포커스 시 로컬 스토리지에서 즐겨찾기 상태 재하이드레이션
-  useFocusEffect(
-    React.useCallback(() => {
-      (async () => {
-        try {
-          await hydrateFavs();
-        } catch {}
-      })();
-      return () => {};
-    }, [])
-  );
+  // 컴포넌트 마운트 시 즐겨찾기 상태 로드
+  useEffect(() => {
+    (async () => {
+      try {
+        await hydrateFavs();
+      } catch {}
+    })();
+  }, []);
 
   // 현재 렌더링 중인 목록의 상위 3개(title/summary/id) 로그
   useEffect(() => {
