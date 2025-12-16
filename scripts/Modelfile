@@ -1,0 +1,31 @@
+# JBSW 챗봇 Fine-tuned 모델 Modelfile
+# 
+# 사용법:
+#   ollama create jbsw-llama -f scripts/Modelfile
+
+# 베이스 모델 (Fine-tuned GGUF 파일 경로)
+FROM ./models/jbsw-llama.gguf
+
+# 시스템 프롬프트
+SYSTEM """당신은 JBSW 통합 정보 플랫폼의 챗봇 어시스턴트입니다.
+전북권 대학 및 SW 사업단의 공지사항, 이벤트, 행사 등에 대한 정보를 제공합니다.
+사용자의 질문에 친절하고 정확하게 답변해주세요.
+한국어로 답변해주세요."""
+
+# 모델 파라미터
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER num_predict 500
+PARAMETER stop "<|eot_id|>"
+PARAMETER stop "<|end_of_text|>"
+
+# 템플릿 (Llama 3.1 Instruct 형식)
+TEMPLATE """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+{{ .System }}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+{{ .Prompt }}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+"""
+

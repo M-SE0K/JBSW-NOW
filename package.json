@@ -11,7 +11,8 @@
     "android": "expo run:android",
     "setup": "node scripts/setup.mjs",
     "proxy": "node server/proxy.js",
-    "ollama:pull": "node scripts/download-ollama-model.mjs"
+    "ollama:pull": "node scripts/download-ollama-model.mjs",
+    "export-data": "node scripts/export-firebase-data.mjs"
   },
   "keywords": [],
   "author": "",

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, ActivityIndicator } from "react-native";
 import EventsList from "../../src/components/EventsList";
@@ -58,18 +57,15 @@ export default function FavoritesScreen() {
     return () => unsub();
   }, []);
 
-  // 포커스 시 로컬 스토리지에서 즐겨찾기 재하이드레이션 + 데이터 재계산
-  useFocusEffect(
-    React.useCallback(() => {
-      (async () => {
-        try {
-          await hydrateFavs();
-          setFavTick((v) => v + 1);
-        } catch {}
-      })();
-      return () => {};
-    }, [])
-  );
+  // 컴포넌트 마운트 시 즐겨찾기 상태 로드
+  useEffect(() => {
+    (async () => {
+      try {
+        await hydrateFavs();
+        setFavTick((v) => v + 1);
+      } catch {}
+    })();
+  }, []);
 
   // 즐겨찾기 id 집합에 따라 필터링된 피드
   const favoriteFeed = useMemo(() => {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,13 +30,8 @@ export default function SearchScreen() {
     preloadData();
   }, []);
 
-  // 포커스 시 최근 검색어 재로드(다른 화면에서 변경된 내용 동기화)
-  useFocusEffect(
-    React.useCallback(() => {
-      console.log("[SEARCH] focus reload");
-      loadRecentSearches();
-    }, [])
-  );
+  // 컴포넌트 마운트 시 최근 검색어 재로드
+  // (포커스 시 재로드는 네비게이션 훅 문제로 제거)
 
   const loadRecentSearches = async () => {
     try {
