@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { useFocusEffect } from "expo-router";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
@@ -9,13 +9,29 @@ import { fetchRecentHotTopWithinDays, getHotClickCounts } from "../../src/servic
 import { fetchNoticesCleaned, type Notice } from "../../src/api/eventsFirestore";
 import { normalize } from "../../src/services/search";
 import { subscribe as subscribeFavorites, ensureUserId as ensureFavUser } from "../../src/services/favorites";
-import { enrichEventsWithTags } from "../../src/services/tags";
+import { enrichEventsWithTags, ALLOWED_TAGS } from "../../src/services/tags";
+
+// 태그별 색상 매핑 (검색 페이지와 동일)
+const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> = {
+  "수강": { bg: "#E3F2FD", text: "#1976D2", border: "#BBDEFB" },
+  "졸업": { bg: "#F3E5F5", text: "#7B1FA2", border: "#CE93D8" },
+  "학사": { bg: "#E8F5E9", text: "#388E3C", border: "#A5D6A7" },
+  "일반": { bg: "#FAFAFA", text: "#616161", border: "#E0E0E0" },
+  "대학원": { bg: "#FFF3E0", text: "#E65100", border: "#FFCC80" },
+  "취업": { bg: "#FFEBEE", text: "#C62828", border: "#EF9A9A" },
+  "공모전": { bg: "#E1F5FE", text: "#0277BD", border: "#81D4FA" },
+  "봉사활동": { bg: "#F1F8E9", text: "#558B2F", border: "#AED581" },
+  "교내활동": { bg: "#FCE4EC", text: "#C2185B", border: "#F48FB1" },
+  "대외활동": { bg: "#E0F2F1", text: "#00695C", border: "#80CBC4" },
+};
 
 export default function HotScreen() {
-  const [events, setEvents] = useState<Event[]>([]);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [favTick, setFavTick] = useState<number>(0);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const scheme = useColorScheme();
 
   const previewItem = (e: Event) => ({
     id: e?.id,
@@ -58,7 +74,7 @@ export default function HotScreen() {
         });
       };
 
-      // summary 보강 (태그 enrich는 성능상 제외)
+      // summary 보강
       const withSummary = (top10Raw as any[]).map((e: any) => {
         if (typeof e?.summary === "string" && e.summary.trim()) return e;
         const matched = findNoticeFor(e?.title, e?.sourceUrl);
@@ -67,10 +83,17 @@ export default function HotScreen() {
       });
       
       console.log("[HOT] load: after notice-merge", withSummary.slice(0, 3).map(previewItem as any));
-      setEvents(withSummary as any);
+      
+      // 태그 추가 (비동기, UI 블로킹 없음)
+      setAllEvents(withSummary as any);
+      enrichEventsWithTags(withSummary as any).then((enriched) => {
+        setAllEvents(enriched);
+      }).catch((err) => {
+        console.warn("[HOT] enrichEventsWithTags failed", err);
+      });
     } catch (e) {
       console.error("[HOT] load error", e);
-      setEvents([]);
+      setAllEvents([]);
     } finally {
       setLoading(false);
     }
@@ -115,7 +138,14 @@ export default function HotScreen() {
       });
       
       console.log("[HOT] refresh: after notice-merge", withSummary.slice(0, 3).map(previewItem as any));
-      setEvents(withSummary as any);
+      
+      // 태그 추가 (비동기, UI 블로킹 없음)
+      setAllEvents(withSummary as any);
+      enrichEventsWithTags(withSummary as any).then((enriched) => {
+        setAllEvents(enriched);
+      }).catch((err) => {
+        console.warn("[HOT] enrichEventsWithTags failed", err);
+      });
     } catch (e) {
       console.error("[HOT] refresh error", e);
     } finally {
@@ -129,10 +159,25 @@ export default function HotScreen() {
 
   // 상태 변경 시 프리뷰 로그
   useEffect(() => {
-    if (!events) return;
-    const preview = (events || []).slice(0, 5).map(previewItem);
-    console.log("[HOT] state: events updated", { count: events.length, preview });
-  }, [events]);
+    if (!allEvents) return;
+    const preview = (allEvents || []).slice(0, 5).map(previewItem);
+    console.log("[HOT] state: events updated", { count: allEvents.length, preview });
+  }, [allEvents]);
+
+  // 모든 태그 추출
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    allEvents.forEach((event) => {
+      event.tags?.forEach((tag) => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [allEvents]);
+
+  // 태그별 필터링된 이벤트
+  const filteredEvents = useMemo(() => {
+    if (!selectedTag) return allEvents;
+    return allEvents.filter((event) => event.tags?.includes(selectedTag));
+  }, [allEvents, selectedTag]);
 
   useEffect(() => {
     ensureFavUser();
@@ -142,14 +187,14 @@ export default function HotScreen() {
 
   // 실시간 조회수 업데이트 (5초마다 - 더 빠른 반영)
   useEffect(() => {
-    if (events.length === 0) return;
+    if (allEvents.length === 0) return;
     
     const updateClickCounts = async () => {
       try {
-        const eventIds = events.map((e) => e.id);
+        const eventIds = allEvents.map((e) => e.id);
         const counts = await getHotClickCounts(eventIds);
         
-        setEvents((prevEvents) =>
+        setAllEvents((prevEvents) =>
           prevEvents.map((ev) => {
             const count = counts.get(ev.id);
             // 조회수가 있으면 업데이트 (0도 포함)
@@ -171,19 +216,19 @@ export default function HotScreen() {
     const interval = setInterval(updateClickCounts, 30000);
     
     return () => clearInterval(interval);
-  }, [events.length]);
+  }, [allEvents.length]);
 
   // 페이지 포커스 시 조회수 갱신
   useFocusEffect(
     useCallback(() => {
-      if (events.length === 0) return;
+      if (allEvents.length === 0) return;
       
       const updateClickCounts = async () => {
         try {
-          const eventIds = events.map((e) => e.id);
+          const eventIds = allEvents.map((e) => e.id);
           const counts = await getHotClickCounts(eventIds);
           
-          setEvents((prevEvents) =>
+          setAllEvents((prevEvents) =>
             prevEvents.map((ev) => {
               const count = counts.get(ev.id);
               if (count !== undefined) {
@@ -198,7 +243,7 @@ export default function HotScreen() {
       };
 
       updateClickCounts();
-    }, [events.length])
+    }, [allEvents.length])
   );
 
   return (
@@ -210,14 +255,86 @@ export default function HotScreen() {
           </View>
         ) : (
           <EventsList
-            events={events}
+            events={filteredEvents}
             placeholderColor="#f5f5f5"
-            emptyText="최근 30일 내 인기 소식이 없습니다"
+            emptyText={selectedTag ? `#${selectedTag} 태그의 인기 소식이 없습니다` : "최근 30일 내 인기 소식이 없습니다"}
             onPressItem={(ev) => {
               console.log("[UI] hot item press", ev.id);
             }}
             style={{ paddingTop: 0 }}
-            ListHeaderComponent={<SectionHeader title="실시간 인기 소식" showMore={false} style={{ marginTop: 0 }} />}
+            ListHeaderComponent={
+              <View>
+                <SectionHeader title="실시간 인기 소식" showMore={false} style={{ marginTop: 0 }} />
+                {allTags.length > 0 && (
+                  <View style={styles.tagFilterContainer}>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.tagFilterScroll}
+                    >
+                      <TouchableOpacity
+                        onPress={() => setSelectedTag(null)}
+                        style={[
+                          styles.tagButton,
+                          selectedTag === null && styles.tagButtonActive,
+                          { backgroundColor: selectedTag === null 
+                            ? (scheme === "dark" ? "#2f80ed" : "#2f80ed")
+                            : (scheme === "dark" ? "#2a2a2a" : "#f1f1f1")
+                          }
+                        ]}
+                      >
+                        <Text style={[
+                          styles.tagButtonText,
+                          selectedTag === null && styles.tagButtonTextActive,
+                          { color: selectedTag === null 
+                            ? "#fff" 
+                            : (scheme === "dark" ? "#ddd" : "#333")
+                          }
+                        ]}>
+                          전체
+                        </Text>
+                      </TouchableOpacity>
+                      {allTags.map((tag) => {
+                        const tagColor = TAG_COLORS[tag] || TAG_COLORS["일반"];
+                        const isActive = selectedTag === tag;
+                        return (
+                          <TouchableOpacity
+                            key={tag}
+                            onPress={() => setSelectedTag(tag)}
+                            style={[
+                              styles.tagButton,
+                              { 
+                                backgroundColor: isActive
+                                  ? (scheme === "dark" ? "#2f80ed" : "#2f80ed")
+                                  : (scheme === "dark" 
+                                      ? `${tagColor.bg}20` 
+                                      : tagColor.bg),
+                                borderWidth: isActive ? 0 : 1,
+                                borderColor: isActive 
+                                  ? "transparent"
+                                  : (scheme === "dark"
+                                      ? `${tagColor.border || tagColor.text}40`
+                                      : (tagColor.border || tagColor.text))
+                              }
+                            ]}
+                          >
+                            <Text style={[
+                              styles.tagButtonText,
+                              { color: isActive
+                                ? "#fff"
+                                : tagColor.text
+                              }
+                            ]}>
+                              #{tag}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            }
             refreshing={refreshing}
             onRefresh={onRefresh}
             extraData={favTick}
@@ -242,6 +359,34 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: "#666",
+  },
+  tagFilterContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  tagFilterScroll: {
+    paddingRight: 16,
+  },
+  tagButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    minHeight: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tagButtonActive: {
+    // 활성화 스타일은 동적 색상으로 처리
+  },
+  tagButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  tagButtonTextActive: {
+    // 활성화 텍스트 스타일은 동적 색상으로 처리
   },
 });
 

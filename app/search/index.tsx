@@ -1,17 +1,32 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Event } from "../../src/types";
 import EventCard from "../../src/components/EventCard";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
-import { enrichEventsWithTags } from "../../src/services/tags";
+import { enrichEventsWithTags, ALLOWED_TAGS } from "../../src/services/tags";
 import { searchByAllWords, normalize, extractHashtags, filterItemsByAllTags } from "../../src/services/search";
+
+// 태그별 색상 매핑
+const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> = {
+  "수강": { bg: "#E3F2FD", text: "#1976D2", border: "#BBDEFB" },
+  "졸업": { bg: "#F3E5F5", text: "#7B1FA2", border: "#CE93D8" },
+  "학사": { bg: "#E8F5E9", text: "#388E3C", border: "#A5D6A7" },
+  "일반": { bg: "#FAFAFA", text: "#616161", border: "#E0E0E0" },
+  "대학원": { bg: "#FFF3E0", text: "#E65100", border: "#FFCC80" },
+  "취업": { bg: "#FFEBEE", text: "#C62828", border: "#EF9A9A" },
+  "공모전": { bg: "#E1F5FE", text: "#0277BD", border: "#81D4FA" },
+  "봉사활동": { bg: "#F1F8E9", text: "#558B2F", border: "#AED581" },
+  "교내활동": { bg: "#FCE4EC", text: "#C2185B", border: "#F48FB1" },
+  "대외활동": { bg: "#E0F2F1", text: "#00695C", border: "#80CBC4" },
+};
 
 export default function SearchScreen() {
   const router = useRouter();
+  const scheme = useColorScheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -101,6 +116,14 @@ export default function SearchScreen() {
     setTimeout(() => handleSearch(), 0);
   };
 
+  const handleTagPress = (tag: string) => {
+    const tagQuery = `#${tag}`;
+    setSearchQuery(tagQuery);
+    setIsSearching(false);
+    setResults([]);
+    setTimeout(() => handleSearch(), 0);
+  };
+
   const handleClearRecent = async () => {
     try {
       await AsyncStorage.removeItem(RECENT_KEY);
@@ -134,6 +157,51 @@ export default function SearchScreen() {
             </View>
           ) : null}
         </View>
+        
+        {/* 태그 안내 및 태그 목록 */}
+        {!isSearching && (
+          <View style={styles.tagSection}>
+            <View style={styles.tagGuide}>
+              <Ionicons name="information-circle-outline" size={16} color={scheme === "dark" ? "#999" : "#666"} />
+              <Text style={[styles.tagGuideText, { color: scheme === "dark" ? "#bbb" : "#666" }]}>
+                #태그명을 통해 관심사별 정보를 모아보세요!
+              </Text>
+            </View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tagsContainer}
+            >
+              {ALLOWED_TAGS.map((tag) => {
+                const tagColor = TAG_COLORS[tag] || TAG_COLORS["일반"];
+                return (
+                  <TouchableOpacity
+                    key={tag}
+                    onPress={() => handleTagPress(tag)}
+                    style={[
+                      styles.tagChip,
+                      {
+                        backgroundColor: scheme === "dark" 
+                          ? `${tagColor.bg}20` 
+                          : tagColor.bg,
+                        borderColor: scheme === "dark"
+                          ? `${tagColor.border}40`
+                          : tagColor.border,
+                      }
+                    ]}
+                  >
+                    <Text style={[
+                      styles.tagChipText,
+                      { color: scheme === "dark" ? tagColor.text : tagColor.text }
+                    ]}>
+                      #{tag}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* 검색 결과 또는 최근 검색어 */}
@@ -217,6 +285,38 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+  },
+  tagSection: {
+    width: "100%",
+    marginTop: 16,
+  },
+  tagGuide: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  tagGuideText: {
+    fontSize: 13,
+    marginLeft: 6,
+    fontWeight: "500",
+  },
+  tagsContainer: {
+    paddingRight: 16,
+  },
+  tagChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1,
+    minHeight: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tagChipText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   searchContainer: {
     width: "100%",
