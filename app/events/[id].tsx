@@ -7,6 +7,7 @@ import { fetchEventById } from "../../src/api/events";
 import Loading from "../../src/components/Loading";
 import ErrorState from "../../src/components/ErrorState";
 import { formatDateTime } from "../../src/utils/date";
+import { incrementHotClick } from "../../src/services/hot";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -56,7 +57,19 @@ export default function EventDetailScreen() {
 
         {e.sourceUrl ? (
           <View style={{ marginTop: 16 }}>
-            <Button title="원문 링크 열기" onPress={() => Linking.openURL(e.sourceUrl!)} />
+            <Button title="원문 링크 열기" onPress={async () => {
+              try {
+                // 인기글 카운트 증가 (실패해도 URL 열기는 계속 진행)
+                try {
+                  await incrementHotClick({ key: e.id, title: String(e.title || ""), sourceUrl: e.sourceUrl || null, posterImageUrl: e.posterImageUrl || null });
+                } catch (hotError) {
+                  console.warn("[UI] incrementHotClick error (non-blocking)", hotError);
+                }
+                await Linking.openURL(e.sourceUrl!);
+              } catch (error) {
+                console.warn("[UI] openURL error", error);
+              }
+            }} />
           </View>
         ) : null}
       </ScrollView>

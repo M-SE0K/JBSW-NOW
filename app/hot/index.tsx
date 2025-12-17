@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, StyleSheet } from "react-native";
+import { useFocusEffect } from "expo-router";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import type { Event } from "../../src/types";
-import { fetchRecentHotTopWithinDays } from "../../src/services/hot";
+import { fetchRecentHotTopWithinDays, getHotClickCounts } from "../../src/services/hot";
 import { fetchNoticesCleaned, type Notice } from "../../src/api/eventsFirestore";
 import { normalize } from "../../src/services/search";
 import { subscribe as subscribeFavorites, ensureUserId as ensureFavUser } from "../../src/services/favorites";
@@ -28,23 +29,24 @@ export default function HotScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const top10Raw = await fetchRecentHotTopWithinDays(30, 10);
+      // 병렬 처리: hot 게시물과 notices를 동시에 가져오기
+      const [top10Raw, notices] = await Promise.all([
+        fetchRecentHotTopWithinDays(30, 10),
+        fetchNoticesCleaned(200),
+      ]);
+      
       console.log("[HOT] load: fetched recent hot raw", {
         count: top10Raw.length,
         sample: top10Raw.slice(0, 3).map(previewItem),
       });
-      const top10 = await enrichEventsWithTags(top10Raw as any);
-      console.log("[HOT] load: enriched with tags", {
-        count: top10.length,
-        sample: (top10 as any[]).slice(0, 3).map(previewItem as any),
-      });
-      // Home과 동일한 로직: notices의 content를 요약으로 활용해 보강
-      const notices = await fetchNoticesCleaned(200);
+
+      // notices를 Map으로 변환 (빠른 조회를 위해)
       const byUrl = new Map<string, Notice>();
       (notices || []).forEach((n) => {
         const url = (n.url || "").trim();
         if (url) byUrl.set(url, n);
       });
+      
       const findNoticeFor = (title?: string | null, url?: string | null): Notice | undefined => {
         const u = (url || "").trim();
         if (u && byUrl.has(u)) return byUrl.get(u);
@@ -55,16 +57,19 @@ export default function HotScreen() {
           return nt && (nt === t || nt.includes(t) || t.includes(nt));
         });
       };
-      const withSummary = (top10 as any[]).map((e: any) => {
+
+      // summary 보강 (태그 enrich는 성능상 제외)
+      const withSummary = (top10Raw as any[]).map((e: any) => {
         if (typeof e?.summary === "string" && e.summary.trim()) return e;
         const matched = findNoticeFor(e?.title, e?.sourceUrl);
         const fromContent = matched?.content ? String(matched.content).slice(0, 200) : null;
         return fromContent ? { ...e, summary: fromContent } : e;
       });
+      
       console.log("[HOT] load: after notice-merge", withSummary.slice(0, 3).map(previewItem as any));
       setEvents(withSummary as any);
     } catch (e) {
-      //console.error("[HOT] load error", e);
+      console.error("[HOT] load error", e);
       setEvents([]);
     } finally {
       setLoading(false);
@@ -74,22 +79,23 @@ export default function HotScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const top10Raw = await fetchRecentHotTopWithinDays(30, 10);
+      // 병렬 처리로 성능 개선
+      const [top10Raw, notices] = await Promise.all([
+        fetchRecentHotTopWithinDays(30, 10),
+        fetchNoticesCleaned(200),
+      ]);
+      
       console.log("[HOT] refresh: fetched recent hot raw", {
         count: top10Raw.length,
         sample: top10Raw.slice(0, 3).map(previewItem),
       });
-      const top10 = await enrichEventsWithTags(top10Raw as any);
-      console.log("[HOT] refresh: enriched with tags", {
-        count: top10.length,
-        sample: (top10 as any[]).slice(0, 3).map(previewItem as any),
-      });
-      const notices = await fetchNoticesCleaned(200);
+
       const byUrl = new Map<string, Notice>();
       (notices || []).forEach((n) => {
         const url = (n.url || "").trim();
         if (url) byUrl.set(url, n);
       });
+      
       const findNoticeFor = (title?: string | null, url?: string | null): Notice | undefined => {
         const u = (url || "").trim();
         if (u && byUrl.has(u)) return byUrl.get(u);
@@ -100,16 +106,18 @@ export default function HotScreen() {
           return nt && (nt === t || nt.includes(t) || t.includes(nt));
         });
       };
-      const withSummary = (top10 as any[]).map((e: any) => {
+      
+      const withSummary = (top10Raw as any[]).map((e: any) => {
         if (typeof e?.summary === "string" && e.summary.trim()) return e;
         const matched = findNoticeFor(e?.title, e?.sourceUrl);
         const fromContent = matched?.content ? String(matched.content).slice(0, 200) : null;
         return fromContent ? { ...e, summary: fromContent } : e;
       });
+      
       console.log("[HOT] refresh: after notice-merge", withSummary.slice(0, 3).map(previewItem as any));
       setEvents(withSummary as any);
     } catch (e) {
-      //console.error("[HOT] refresh error", e);
+      console.error("[HOT] refresh error", e);
     } finally {
       setRefreshing(false);
     }
@@ -131,6 +139,67 @@ export default function HotScreen() {
     const unsub = subscribeFavorites(() => setFavTick((v) => v + 1));
     return () => unsub();
   }, []);
+
+  // 실시간 조회수 업데이트 (5초마다 - 더 빠른 반영)
+  useEffect(() => {
+    if (events.length === 0) return;
+    
+    const updateClickCounts = async () => {
+      try {
+        const eventIds = events.map((e) => e.id);
+        const counts = await getHotClickCounts(eventIds);
+        
+        setEvents((prevEvents) =>
+          prevEvents.map((ev) => {
+            const count = counts.get(ev.id);
+            // 조회수가 있으면 업데이트 (0도 포함)
+            if (count !== undefined) {
+              return { ...ev, hotClickCount: count };
+            }
+            return ev;
+          })
+        );
+      } catch (error) {
+        console.warn("[HOT] failed to update click counts", error);
+      }
+    };
+
+    // 초기 업데이트
+    updateClickCounts();
+    
+    // 5초마다 업데이트 (더 빠른 반영)
+    const interval = setInterval(updateClickCounts, 30000);
+    
+    return () => clearInterval(interval);
+  }, [events.length]);
+
+  // 페이지 포커스 시 조회수 갱신
+  useFocusEffect(
+    useCallback(() => {
+      if (events.length === 0) return;
+      
+      const updateClickCounts = async () => {
+        try {
+          const eventIds = events.map((e) => e.id);
+          const counts = await getHotClickCounts(eventIds);
+          
+          setEvents((prevEvents) =>
+            prevEvents.map((ev) => {
+              const count = counts.get(ev.id);
+              if (count !== undefined) {
+                return { ...ev, hotClickCount: count };
+              }
+              return ev;
+            })
+          );
+        } catch (error) {
+          console.warn("[HOT] failed to update click counts on focus", error);
+        }
+      };
+
+      updateClickCounts();
+    }, [events.length])
+  );
 
   return (
     <SafeAreaView style={styles.container}> 
