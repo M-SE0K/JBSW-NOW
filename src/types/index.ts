@@ -23,6 +23,7 @@ export type Event = {
   sourceUrl?: string | null;
   posterImageUrl?: string | null;
   ai?: EventAI | null;
+  hotClickCount?: number | null; // hot 게시판 조회수
 };
 
 export type PagedResponse<T> = {
