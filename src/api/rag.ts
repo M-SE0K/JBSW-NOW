@@ -4,7 +4,8 @@
  */
 
 import { fetchNoticesCleaned, type Notice } from "./eventsFirestore";
-import { fetchRecentNews, type Event } from "./eventsFirestore";
+import { fetchRecentNews } from "./eventsFirestore";
+import type { Event } from "../types";
 
 export type RetrievedDocument = {
   id: string;
@@ -96,12 +97,58 @@ export function formatRAGContext(docs: RetrievedDocument[]): string {
   }
 
   const sections = docs.map((doc, idx) => {
-    const sourceLabel = doc.source === "notice" ? "공지사항" : "이벤트";
-    const dateInfo = doc.date ? ` (${doc.date})` : "";
-    return `[${idx + 1}] ${sourceLabel}: ${doc.title}${dateInfo}\n내용: ${doc.content}`;
+    const sourceLabel = doc.source === "notice" ? "📢 공지사항" : "🎉 이벤트";
+    const dateInfo = doc.date ? `\n📅 날짜: ${doc.date}` : "";
+    const urlInfo = doc.url ? `\n🔗 링크: ${doc.url}` : "";
+    
+    // 내용을 더 읽기 쉽게 정리 (너무 길면 요약)
+    let content = doc.content;
+    if (content.length > 300) {
+      content = content.slice(0, 300) + "...";
+    }
+    
+    return `${sourceLabel}: ${doc.title}${dateInfo}${urlInfo}\n\n📝 내용:\n${content}`;
   });
 
-  return `다음은 관련 정보입니다:\n\n${sections.join("\n\n")}`;
+  return `다음은 검색된 관련 정보입니다 (총 ${docs.length}개):\n\n${sections.join("\n\n---\n\n")}\n\n위 정보를 바탕으로 사용자의 질문에 친절하고 상세하게 답변해주세요.`;
+}
+
+/**
+ * 날짜 문자열을 파싱하여 밀리초로 변환
+ */
+function parseDateMs(dateStr: string | null | undefined): number | null {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  
+  // YYYY.MM.DD 형식 파싱
+  const match = dateStr.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1; // 0-based
+    const day = parseInt(match[3], 10);
+    return new Date(year, month, day).getTime();
+  }
+  
+  // ISO 형식 파싱
+  const parsed = Date.parse(dateStr);
+  return isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * 최근 N일 이내의 공지사항만 필터링
+ */
+function filterRecentNotices(notices: Notice[], days: number = 90): Notice[] {
+  const cutoffMs = Date.now() - days * 24 * 60 * 60 * 1000;
+  
+  return notices.filter((notice) => {
+    // date, crawled_at, firebase_created_at 중 하나라도 최근이면 포함
+    const dateMs = parseDateMs(notice.date || notice.crawled_at || notice.firebase_created_at);
+    if (!dateMs) return false;
+    
+    // 미래 날짜는 제외 (데이터 오류 방지)
+    if (dateMs > Date.now() + 7 * 24 * 60 * 60 * 1000) return false;
+    
+    return dateMs >= cutoffMs;
+  });
 }
 
 /**
@@ -114,12 +161,21 @@ export async function retrieveRelevantDocuments(
   try {
     // Firebase에서 최근 공지사항과 이벤트 가져오기
     const [notices, events] = await Promise.all([
-      fetchNoticesCleaned(100), // 최근 100개 공지
-      fetchRecentNews(100), // 최근 100개 이벤트
+      fetchNoticesCleaned(500), // 충분히 가져온 후 필터링
+      fetchRecentNews(500), // 최근 이벤트
     ]);
 
+    // 최근 90일 이내 공지사항만 필터링
+    const recentNotices = filterRecentNotices(notices, 90);
+    
+    console.log("[RAG] Filtered notices", {
+      total: notices.length,
+      recent: recentNotices.length,
+      cutoff: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+
     // 검색 실행
-    const results = searchDocuments(query, notices, events, maxResults);
+    const results = searchDocuments(query, recentNotices, events, maxResults);
 
     return results;
   } catch (error) {

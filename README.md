@@ -27,6 +27,7 @@
 
 **본 프로젝트는 2025년 오픈소스 SW 아이디어 해커톤 캠프에서 장려상을 수상한 서비스입니다.**
 
+**본 프로젝트는 2025년 전북대학교 컴퓨터인공지능학부 작품경진대회 대상을 수상한 서비스입니다.**
 </aside>
 
 ### FrameWork
@@ -62,11 +63,20 @@ npm run setup
 ### 실행 방법
 
 ```bash
-//이미지 CORS 우회용 프록시 실행.
-npm run proxy
 
 //expo 크로스 플랫폼 실행
 npx expo start -c
+
+//서버 컴퓨터 ssh 접속 및 모델 실행
+OLLMA_HOST=123.123.123 olama server
+
+//프록시 실행
+OLLAMA_URL=IP:포트번호 npm run proxy
+
+//간단한 프론트 확인을 위한 프록시 실행
+npm run proxy
+
+
 ```
 
 ---

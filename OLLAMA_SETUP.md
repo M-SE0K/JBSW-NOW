@@ -90,6 +90,7 @@ EXPO_PUBLIC_PROXY_URL=http://localhost:4000
 
 ```bash
 npm run proxy
+
 ```
 
 또는

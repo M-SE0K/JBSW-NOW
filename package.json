@@ -12,7 +12,13 @@
     "setup": "node scripts/setup.mjs",
     "proxy": "node server/proxy.js",
     "ollama:pull": "node scripts/download-ollama-model.mjs",
-    "export-data": "node scripts/export-firebase-data.mjs"
+    "export-data": "node scripts/export-firebase-data.mjs",
+    "benchmark:chat": "node scripts/benchmark-chat.mjs",
+    "benchmark:chat:full": "node scripts/benchmark-chat-full.mjs",
+    "benchmark:compare": "node scripts/benchmark-compare-models.mjs",
+    "check:system": "node scripts/check-system.mjs",
+    "check:gpu": "node scripts/check-gpu-mode.mjs",
+    "test:gpu": "node scripts/test-gpu-mode.mjs"
   },
   "keywords": [],
   "author": "",
@@ -43,6 +49,7 @@
     "react-dom": "19.1.0",
     "react-native": "0.81.4",
     "react-native-gesture-handler": "~2.28.0",
+    "react-native-markdown-display": "^7.0.2",
     "react-native-reanimated": "~4.1.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
