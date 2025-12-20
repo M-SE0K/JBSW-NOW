@@ -31,17 +31,17 @@
 </aside>
 
 ### FrameWork
-<img src="https://img.shields.io/badge/reactnative-61DAFB?style=for-the-badge&logo=react&logoColor=black"> 
-<img src="https://img.shields.io/badge/node.js-339933?style=for-the-badge&logo=Node.js&logoColor=white">
-<img src="https://img.shields.io/badge/express-009922?style=for-the-badge&logo=express&logoColor=white">
-<img src="https://img.shields.io/badge/Expo-000000?style=for-the-badge&logo=Expo&logoColor=white">
-<img src="https://img.shields.io/badge/firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=white">
+<span><img src="https://img.shields.io/badge/reactnative-61DAFB?style=for-the-badge&logo=react&logoColor=black"></span>
+<span><img src="https://img.shields.io/badge/node.js-339933?style=for-the-badge&logo=Node.js&logoColor=white"></span>
+<span><img src="https://img.shields.io/badge/express-009922?style=for-the-badge&logo=express&logoColor=white"></span>
+<span><img src="https://img.shields.io/badge/Expo-000000?style=for-the-badge&logo=Expo&logoColor=white"></span>
+<span><img src="https://img.shields.io/badge/firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=white"></span>
 
 > 
 
 ### 프로젝트 구조
 
-![image.png](attachment:7931cf7c-d2e8-4ba1-a0ac-fcaf7042d574:image.png)
+![image.png](https://github.com/M-SE0K/JBSW-NOW/issues/37#issue-3464562734)
 
 ---
 
