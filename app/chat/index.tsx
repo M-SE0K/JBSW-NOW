@@ -15,6 +15,7 @@ import {
   Easing,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Markdown from "react-native-markdown-display";
 import { askChat } from "../../src/api/chat";
 
 type Msg = { role: "user" | "bot"; text: string };
@@ -199,14 +200,116 @@ export default function ChatScreen() {
                       style={{ marginBottom: 4 }}
                     />
                   )}
-                  <Text
-                    style={[
-                      styles.messageText,
-                      { color: isUser ? "#ffffff" : isDark ? "#e2e8f0" : "#0f172a" },
-                    ]}
-                  >
-                    {m.text}
-                  </Text>
+                  {isUser ? (
+                    <Text
+                      style={[
+                        styles.messageText,
+                        { color: "#ffffff" },
+                      ]}
+                    >
+                      {m.text}
+                    </Text>
+                  ) : (
+                    <Markdown
+                      style={{
+                        body: {
+                          color: isDark ? "#e2e8f0" : "#0f172a",
+                          fontSize: 15,
+                          lineHeight: 22,
+                          fontFamily: Platform.OS === "ios" ? "-apple-system" : "sans-serif",
+                        },
+                        paragraph: {
+                          marginTop: 0,
+                          marginBottom: 12,
+                        },
+                        heading1: {
+                          fontSize: 22,
+                          fontWeight: "700",
+                          marginTop: 16,
+                          marginBottom: 12,
+                          color: isDark ? "#f1f5f9" : "#0f172a",
+                          letterSpacing: -0.3,
+                        },
+                        heading2: {
+                          fontSize: 18,
+                          fontWeight: "700",
+                          marginTop: 16,
+                          marginBottom: 10,
+                          color: isDark ? "#f1f5f9" : "#0f172a",
+                          letterSpacing: -0.2,
+                        },
+                        heading3: {
+                          fontSize: 16,
+                          fontWeight: "600",
+                          marginTop: 12,
+                          marginBottom: 8,
+                          color: isDark ? "#e2e8f0" : "#1e293b",
+                          letterSpacing: -0.1,
+                        },
+                        strong: {
+                          fontWeight: "700",
+                          color: isDark ? "#f1f5f9" : "#0f172a",
+                        },
+                        em: {
+                          fontStyle: "italic",
+                          color: isDark ? "#cbd5e1" : "#475569",
+                        },
+                        listItem: {
+                          marginBottom: 6,
+                          paddingLeft: 4,
+                        },
+                        bullet_list: {
+                          marginBottom: 12,
+                          marginTop: 4,
+                        },
+                        ordered_list: {
+                          marginBottom: 12,
+                          marginTop: 4,
+                        },
+                        code_inline: {
+                          backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
+                          color: isDark ? "#60a5fa" : "#1e40af",
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 4,
+                          fontSize: 13,
+                          fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                        },
+                        code_block: {
+                          backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
+                          color: isDark ? "#60a5fa" : "#1e40af",
+                          padding: 12,
+                          borderRadius: 8,
+                          marginVertical: 12,
+                          fontSize: 13,
+                          fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                        },
+                        link: {
+                          color: "#2563eb",
+                          textDecorationLine: "none",
+                          fontWeight: "500",
+                        },
+                        blockquote: {
+                          borderLeftWidth: 3,
+                          borderLeftColor: isDark ? "#475569" : "#cbd5e1",
+                          paddingLeft: 16,
+                          marginLeft: 0,
+                          marginVertical: 12,
+                          backgroundColor: isDark ? "rgba(148, 163, 184, 0.08)" : "rgba(148, 163, 184, 0.04)",
+                          paddingVertical: 10,
+                          paddingRight: 12,
+                          borderRadius: 4,
+                        },
+                        hr: {
+                          backgroundColor: isDark ? "#334155" : "#e2e8f0",
+                          height: 1,
+                          marginVertical: 16,
+                        },
+                      }}
+                    >
+                      {m.text}
+                    </Markdown>
+                  )}
                 </View>
               );
             })}

@@ -54,15 +54,36 @@ async function main() {
     console.warn('Failed to verify/install express deps:', e?.message || e);
   }
 
-  // 5) Watchman 재인덱싱 (macOS + watchman 존재 시)
+  // 5) Watchman 설치 및 재인덱싱 (macOS)
   const isMac = process.platform === 'darwin';
-  const hasWatchman = spawnSync('which', ['watchman']).status === 0;
-  if (isMac && hasWatchman) {
-    try {
-      const parent = path.dirname(projectRoot);
-      run(`watchman watch-del '${parent}' || true`);
-      run(`watchman watch-project '${parent}'`);
-    } catch {}
+  if (isMac) {
+    const hasWatchman = spawnSync('which', ['watchman']).status === 0;
+    if (!hasWatchman) {
+      // Watchman이 없으면 Homebrew로 설치 시도
+      const hasBrew = spawnSync('which', ['brew']).status === 0;
+      if (hasBrew) {
+        try {
+          console.log('\n📦 Installing watchman (for file watching optimization)...');
+          run('brew install watchman');
+          console.log('✅ Watchman installed successfully');
+        } catch (e) {
+          console.warn('⚠️  Failed to install watchman:', e?.message || e);
+          console.warn('   You can install it manually: brew install watchman');
+        }
+      } else {
+        console.warn('⚠️  Watchman not found. Install Homebrew first, then run: brew install watchman');
+      }
+    } else {
+      // Watchman이 있으면 재인덱싱
+      try {
+        const parent = path.dirname(projectRoot);
+        run(`watchman watch-del '${parent}' || true`);
+        run(`watchman watch-project '${parent}'`);
+        console.log('✅ Watchman reindexed');
+      } catch (e) {
+        console.warn('⚠️  Failed to reindex watchman:', e?.message || e);
+      }
+    }
   }
 
   

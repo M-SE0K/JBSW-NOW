@@ -3,6 +3,11 @@ const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 4000;
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
+const MAX_CONCURRENT_REQUESTS = parseInt(process.env.MAX_CONCURRENT_REQUESTS || "10", 10);
+
+// 동시 요청 제한 관리
+let activeRequests = 0;
+const requestQueue = [];
 
 // JSON 파싱 미들웨어
 app.use(express.json());
@@ -30,17 +35,24 @@ app.use((req, res, next) => {
 // 간단한 헬스체크
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-// Ollama 프록시 엔드포인트
-app.post("/api/ollama/chat", async (req, res) => {
+// 요청 처리 함수
+async function processChatRequest(req, res) {
   try {
     const { model, messages, options } = req.body;
     
     if (!model || !messages) {
+      activeRequests--;
+      // 대기 중인 요청 처리
+      if (requestQueue.length > 0 && activeRequests < MAX_CONCURRENT_REQUESTS) {
+        const next = requestQueue.shift();
+        activeRequests++;
+        processChatRequest(next.req, next.res);
+      }
       return res.status(400).json({ error: "Missing 'model' or 'messages'" });
     }
 
     // eslint-disable-next-line no-console
-    console.log(`[ollama] chat request → model: ${model}, messages: ${messages.length}`);
+    console.log(`[ollama] chat request → model: ${model}, messages: ${messages.length} (활성 요청: ${activeRequests}/${MAX_CONCURRENT_REQUESTS})`);
     // eslint-disable-next-line no-console
     console.log(`[ollama] connecting to: ${OLLAMA_URL}/api/chat`);
 
@@ -100,6 +112,26 @@ app.post("/api/ollama/chat", async (req, res) => {
     }
     
     res.status(500).json({ error: String(err?.message || err) });
+  } finally {
+    activeRequests--;
+    // 대기 중인 요청 처리
+    if (requestQueue.length > 0 && activeRequests < MAX_CONCURRENT_REQUESTS) {
+      const next = requestQueue.shift();
+      processChatRequest(next.req, next.res);
+    }
+  }
+}
+
+// Ollama 프록시 엔드포인트 (동시 요청 제한 포함)
+app.post("/api/ollama/chat", (req, res) => {
+  if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
+    // 대기열에 추가
+    requestQueue.push({ req, res });
+    // eslint-disable-next-line no-console
+    console.log(`[ollama] 요청 대기열에 추가 (대기 중: ${requestQueue.length})`);
+  } else {
+    activeRequests++;
+    processChatRequest(req, res);
   }
 });
 
