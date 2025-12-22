@@ -22,8 +22,14 @@ async function main() {
   }
 
   // 2) 의존성 설치 (lock이 있으면 ci, 없으면 install)
+  // npm ci가 실패하면 (동기화 문제) npm install로 fallback
   if (existsSync(path.join(projectRoot, 'package-lock.json'))) {
-    run('npm ci');
+    try {
+      run('npm ci');
+    } catch (e) {
+      console.warn('\n⚠️  npm ci failed (likely lock file out of sync). Falling back to npm install...');
+      run('npm install');
+    }
   } else {
     run('npm install');
   }
@@ -31,9 +37,26 @@ async function main() {
   // 3) .env 생성 (없으면)
   const envPath = path.join(projectRoot, '.env');
   if (!existsSync(envPath)) {
-    const content = 'EXPO_PUBLIC_API_BASE_URL=\n';
+    const content = `# API Base URL
+EXPO_PUBLIC_API_BASE_URL=
+
+# Firebase Configuration (Firebase 콘솔에서 가져오세요)
+EXPO_PUBLIC_FIREBASE_API_KEY=
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
+EXPO_PUBLIC_FIREBASE_DATABASE_URL=
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+EXPO_PUBLIC_FIREBASE_APP_ID=
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=
+
+# Ollama Configuration (선택사항 - 챗봇 기능 사용 시)
+OLLAMA_URL=http://localhost:11434
+EXPO_PUBLIC_OLLAMA_MODEL=llama3.2
+EXPO_PUBLIC_PROXY_URL=http://localhost:4000
+`;
     await fs.writeFile(envPath, content, 'utf8');
-    console.log('Created .env');
+    console.log('Created .env (Firebase 환경 변수를 설정해주세요)');
   }
 
   // 4) express 의존성 보증 설치 (누락 시 추가)
