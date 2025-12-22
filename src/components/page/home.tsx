@@ -1,15 +1,23 @@
-import React from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, useColorScheme, Linking } from "react-native";
+import { View, useColorScheme, Text, StyleSheet, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import SectionHeader from "../SectionHeader";
-import BannerSlider from "../BannerSlider";
-import { useEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import HeroBanner from "../HeroBanner";
+import UniversityFilter from "../UniversityFilter";
+import { RAGBotCard, AcademicScheduleCard, NoticesCard } from "../Sidebar";
+import FloatingChatButton from "../FloatingChatButton";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import { enrichEventsWithTags, classifyEventTags } from "../../services/tags";
 import EventsList from "../EventsList";
+import EventCard from "../EventCard";
 import type { Event } from "../../types";
+
+const isWeb = Platform.OS === "web";
+const SIDEBAR_WIDTH = isWeb ? 300 : 0;
+
+type University = "전체" | "전북대" | "군산대" | "원광대" | "SW사업단";
 
 export default function Home() {
   const colorScheme = useColorScheme();
@@ -18,31 +26,14 @@ export default function Home() {
   const subText = colorScheme === "dark" ? "#C8CDD2" : "#6B7280";
   const router = useRouter();
   const [news, setNews] = useState<any[]>([]);
+  const [notices, setNotices] = useState<any[]>([]);
   const [newsLimit, setNewsLimit] = useState<number>(200);
   const [noticeLimit, setNoticeLimit] = useState<number>(3);
   const [favTick, setFavTick] = useState<number>(0);
+  const [selectedUniversity, setSelectedUniversity] = useState<University>("전체");
 
   const handleMorePress = () => {
     router.push("/events");
-  };
-
-  const handleBannerPress = async (event: Event) => {
-    const urlRaw = event.sourceUrl;
-    if (!urlRaw) {
-      console.log("[UI] BannerSlider:press - no sourceUrl", { id: event.id, posterImageUrl: event.posterImageUrl });
-      return;
-    }
-    try {
-      const url = encodeURI(urlRaw);
-      const can = await Linking.canOpenURL(url);
-      if (!can) {
-        console.warn("[UI] BannerSlider: cannot open url", url);
-        return;
-      }
-      await Linking.openURL(url);
-    } catch (e) {
-      console.warn("[UI] BannerSlider: openURL error", e);
-    }
   };
 
   useEffect(() => {
@@ -54,25 +45,6 @@ export default function Home() {
           fetchNoticesCleaned(noticeLimit),
         ]);
 
-        console.log("[UI] Home:fetch done", {
-          eventsCount: Array.isArray(eventsDataRaw) ? eventsDataRaw.length : 0,
-          noticesCount: Array.isArray(notices) ? notices.length : 0,
-        });
-        // notices: Title과 date만 로그 출력
-        if (Array.isArray(notices)) {
-          const preview = notices.map((n: any) => ({
-            title: typeof n.title === "string" ? n.title.slice(0, 80) : n.title,
-            date: n.date ?? n.crawled_at ?? n.firebase_created_at ?? null,
-          }));
-          console.log("[UI] Home:notices (title, date)", preview);
-        }
-        ;(notices || []).slice(0, 20).forEach((n: any, i: number) => {
-          // console.log("[UI] Home:notice sample", i, {
-          //   id: n.id,
-          //   title: typeof n.title === "string" ? n.title.slice(0, 120) : n.title,
-          //   url: n.url || null,
-          // });
-        });
 
         // Notice를 Event 형태로 매핑하며 Gemini 기반 태그 라벨링 적용
         const noticeAsEvents = await Promise.all((notices || []).map(async (n: any) => {
@@ -102,17 +74,8 @@ export default function Home() {
         // 이벤트 태그 정제/보강
         const eventsData = await enrichEventsWithTags(Array.isArray(eventsDataRaw) ? eventsDataRaw : [] as any);
 
-        // 공지 3건 + 태그 정제된 이벤트를 묶어서 렌더링
         const merged = [...noticeAsEvents, ...eventsData];
-        console.log("[UI] Home:merged feed size", merged.length);
-        // 현재 피드 표시 순서 로그: Title과 date만
-        console.log(
-          "[UI] Home:feed (title, date)",
-          merged.map((it: any) => ({
-            title: typeof it.title === "string" ? it.title.slice(0, 80) : it.title,
-            date: it.startAt || null,
-          }))
-        );
+        setNotices(noticeAsEvents);
         setNews(merged);
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
@@ -133,13 +96,10 @@ export default function Home() {
     return () => unsub();
   }, []);
 
-  // 다양한 날짜 문자열(예: 2025.07.30, 2025. 7. 28.(월), ISO 등)을 ISO로 정규화
   function deriveIsoDate(input?: string | null): string {
     if (!input || typeof input !== "string") return new Date().toISOString();
     const s = input.trim();
-    // 이미 ISO인 경우
     if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s).toISOString();
-    // 2025.07.30 또는 2025. 7. 30. (월) 형태를 포착
     const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
     if (m) {
       const y = Number(m[1]);
@@ -148,69 +108,183 @@ export default function Home() {
       const dt = new Date(Date.UTC(y, Math.max(0, mo - 1), d, 0, 0, 0));
       return dt.toISOString();
     }
-    // 그 외 문자열은 Date 파서에 위임(실패 시 현재 시각)
     const parsed = new Date(s);
     if (!isNaN(parsed.getTime())) return parsed.toISOString();
     return new Date().toISOString();
   }
 
-  function toDateMsFromString(s?: string | null): number {
-    if (!s || typeof s !== "string") return 0;
-    const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
-    if (m) {
-      const y = Number(m[1]);
-      const mo = Number(m[2]);
-      const d = Number(m[3]);
-      const dt = new Date(y, Math.max(0, mo - 1), d, 0, 0, 0);
-      return dt.getTime();
+  const filteredNews = useMemo(() => {
+    if (selectedUniversity === "전체") {
+      return news;
     }
-    const t = Date.parse(s);
-    return Number.isNaN(t) ? 0 : t;
+    return news.filter((item) => {
+      const orgName = item.org?.name || "";
+      const tags = item.tags || [];
+      const allText = `${orgName} ${tags.join(" ")}`.toLowerCase();
+      
+      const univMap: Record<University, string[]> = {
+        "전체": [],
+        "전북대": ["전북대", "전북", "jbnu"],
+        "군산대": ["군산대", "군산", "kunsan"],
+        "원광대": ["원광대", "원광", "wonkwang"],
+        "SW사업단": ["sw사업단", "사업단", "sw"],
+      };
+      
+      const keywords = univMap[selectedUniversity];
+      return keywords.some(keyword => allText.includes(keyword.toLowerCase()));
+    });
+  }, [news, selectedUniversity]);
+
+  const headerComponent = (
+    <View style={{ paddingTop: 16 }}>
+      <View style={styles.headerWrapper}>
+        <HeroBanner />
+        <View style={styles.feedHeader}>
+          <View style={styles.feedTitleRow}>
+            <Text style={[styles.feedTitle, { color: textColor }]}>
+              실시간 통합 피드
+            </Text>
+            <View style={[styles.aiUpdatingBadge, { backgroundColor: colorScheme === "dark" ? "#1E293B" : "#F1F5F9" }]}>
+              <Ionicons name="sparkles" size={10} color="#4F46E5" />
+              <Text style={[styles.aiUpdatingText, { color: subText }]}>AI Updating...</Text>
+            </View>
+          </View>
+          <UniversityFilter 
+            selectedUniversity={selectedUniversity}
+            onSelectUniversity={setSelectedUniversity}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  const sidebarComponent = (
+    <View style={styles.sidebar}>
+      <RAGBotCard />
+      <AcademicScheduleCard />
+      <NoticesCard notices={notices} onPressMore={handleMorePress} />
+    </View>
+  );
+  if (isWeb) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB" }} edges={["left", "right", "bottom"]}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          {headerComponent}
+          <View style={styles.contentWrapper}>
+            <View style={styles.mainContent}>
+              <View style={styles.feedContainer}>
+                {filteredNews.length === 0 ? (
+                  <View style={[styles.emptyState, { backgroundColor: placeholder }]}>
+                    <Text style={{ color: "#888" }}>최근 소식이 없습니다.</Text>
+                  </View>
+                ) : (
+                  filteredNews.map((item) => (
+                    <EventCard 
+                      key={item.id}
+                      event={item} 
+                      onPress={() => {
+                        // TODO: 상세 라우팅 연결
+                      }}
+                    />
+                  ))
+                )}
+              </View>
+              <View style={styles.sidebarContainer}>
+                {sidebarComponent}
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+        <FloatingChatButton />
+      </SafeAreaView>
+    );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["left", "right", "bottom"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB" }} edges={["left", "right", "bottom"]}>
       <EventsList
-        events={news as any}
+        events={filteredNews as any}
         placeholderColor={placeholder}
         extraData={favTick}
-        ListHeaderComponent={
-          <View>
-            {/* 상단 배너 영역 */}
-            <View style={{ marginTop: 12, borderRadius: 14, overflow: "hidden" }}>
-              <BannerSlider
-                imageUrls={[
-                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1756799978_8_uk3XLIRb1eoAs5mFiqZR_C5FQz5bs8WzFzk5iYy68b6a3ea.jpg",
-                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1753667195_ZPaSl1QTX9Dcu5Q7PpBj6Di9VFUFNjbRQw3HNxs8j6886d67b.jpg",
-                  "https://img2.stibee.com/104257_3015028_1758707911021760055.png",
-                  "https://csai.jbnu.ac.kr/CrossEditor/binary/images/000858/20250926092439830_MFYZGK2M.png",
-                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1756961870_z2DhygbkGkgi4_DhICuEXjBXX6NJt3r3oZj8YfFhb68b91c4e.jpg",
-                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1758521361_Pgm2cRhLVDaidx81VpefRHzFE8_VIZK6W2eKuxu2m68d0e811.png",
-                ]}
-                imageSourceUrls={{
-                  // 각 이미지 URL에 해당하는 원본 웹사이트 URL 매핑
-                  // 필요시 실제 공지사항 URL로 변경하세요
-                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1756799978_8_uk3XLIRb1eoAs5mFiqZR_C5FQz5bs8WzFzk5iYy68b6a3ea.jpg": "https://swuniv.jbnu.ac.kr",
-                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1753667195_ZPaSl1QTX9Dcu5Q7PpBj6Di9VFUFNjbRQw3HNxs8j6886d67b.jpg": "https://swuniv.jbnu.ac.kr",
-                  "https://img2.stibee.com/104257_3015028_1758707911021760055.png": "https://stibee.com",
-                  "https://csai.jbnu.ac.kr/CrossEditor/binary/images/000858/20250926092439830_MFYZGK2M.png": "https://csai.jbnu.ac.kr",
-                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1756961870_z2DhygbkGkgi4_DhICuEXjBXX6NJt3r3oZj8YfFhb68b91c4e.jpg": "https://sw.kunsan.ac.kr",
-                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1758521361_Pgm2cRhLVDaidx81VpefRHzFE8_VIZK6W2eKuxu2m68d0e811.png": "https://sw.kunsan.ac.kr",
-                }}
-                onPressItem={handleBannerPress}
-              />
-            </View>
-            {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
-            <SectionHeader title="새로운 소식" onPressMore={handleMorePress} />
+        ListHeaderComponent={headerComponent}
+        ListFooterComponent={
+          <View style={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 8 }}>
+            {sidebarComponent}
           </View>
         }
         onPressItem={(ev: any) => {
           // TODO: 상세 라우팅 연결
-          //console.log("[UI] news press", ev.id);
         }}
       />
+      <FloatingChatButton />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  headerWrapper: {
+    maxWidth: 1400,
+    alignSelf: "center",
+    width: "100%",
+    paddingHorizontal: 24,
+  },
+  feedHeader: {
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  feedTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    flexWrap: "wrap",
+  },
+  feedTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginRight: 8,
+  },
+  aiUpdatingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  aiUpdatingText: {
+    fontSize: 11,
+    fontWeight: "500",
+    marginLeft: 4,
+  },
+  contentWrapper: {
+    width: "100%",
+    paddingHorizontal: 24,
+  },
+  mainContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    maxWidth: 1400,
+    alignSelf: "center",
+    width: "100%",
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  feedContainer: {
+    flex: 1,
+    marginRight: 32,
+    minWidth: 0,
+  },
+  sidebarContainer: {
+    width: SIDEBAR_WIDTH,
+    flexShrink: 0,
+  },
+  sidebar: {},
+  emptyState: {
+    height: 120,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 8,
+  },
+});
 
 
