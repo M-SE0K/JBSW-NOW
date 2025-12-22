@@ -40,8 +40,6 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls, imageSourceUr
           return;
         }
 
-        // 2) 기본: 최근 공지형 배너를 가져와 사용
-        console.log("[UI] BannerSlider:fetch start", { limit });
         const notices = await fetchRecentNoticeBanners(limit);
         const onlyNotices = notices.filter(d => !!d.posterImageUrl);
         if (mounted) setItems(onlyNotices.slice(0, limit));
@@ -49,7 +47,7 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls, imageSourceUr
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; console.log("[UI] BannerSlider:unmount"); };
+    return () => { mounted = false; };
   }, [limit, imageUrls]);
 
   useEffect(() => {
@@ -57,14 +55,11 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls, imageSourceUr
     const timer = setInterval(() => {
       setIndex((prev) => {
         const next = (prev + 1) % items.length;
-        // if (next !== prev) {
-        //   console.log("[UI] BannerSlider:auto-advance", { from: prev, to: next, total: items.length });
-        // }
         scrollRef.current?.scrollTo({ x: next * ITEM_WIDTH, animated: true });
         return next;
       });
     }, 4000);
-    return () => { clearInterval(timer); console.log("[UI] BannerSlider:auto-advance:stopped"); };
+    return () => clearInterval(timer);
   }, [items.length]);
 
   if (loading) {
@@ -76,7 +71,6 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls, imageSourceUr
   }
 
   if (!items.length) {
-    console.log("[UI] BannerSlider:empty");
     return <View style={{ height: ITEM_HEIGHT }} />;
   }
 
@@ -89,19 +83,15 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls, imageSourceUr
         showsHorizontalScrollIndicator={false}
         onScroll={(e) => {
           const i = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
-          // if (i !== index) {
-          //   //console.log("[UI] BannerSlider:scroll", { from: index, to: i });
-          // }
           setIndex(i);
         }}
         scrollEventThrottle={16}
       >
         {items.map((ev) => (
-          <TouchableOpacity key={ev.id} activeOpacity={0.9} onPress={() => { console.log("[UI] BannerSlider:press", { id: ev.id, url: ev.posterImageUrl, sourceUrl: ev.sourceUrl }); onPressItem?.(ev); }}>
+          <TouchableOpacity key={ev.id} activeOpacity={0.9} onPress={() => onPressItem?.(ev)}>
             <Image
               source={{ uri: maybeProxyForWeb(ev.posterImageUrl as string) as string }}
               style={{ width: ITEM_WIDTH, height: ITEM_HEIGHT, resizeMode: "cover" }}
-              onLoad={() => console.log("[UI] BannerSlider:image load", { id: ev.id })}
               onError={(err) => console.warn("[UI] BannerSlider:image error", { id: ev.id, error: err?.nativeEvent || err })}
             />
           </TouchableOpacity>
