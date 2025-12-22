@@ -12,9 +12,10 @@ type Props = {
   limit?: number;
   onPressItem?: (event: Event) => void;
   imageUrls?: string[]; // 하드코딩된 배너 이미지 URL 배열 (제공 시 이 값을 우선 사용)
+  imageSourceUrls?: Record<string, string>; // 이미지 URL을 키로 하는 sourceUrl 매핑 (선택사항)
 };
 
-export const BannerSlider = ({ limit = 10, onPressItem, imageUrls }: Props) => {
+export const BannerSlider = ({ limit = 10, onPressItem, imageUrls, imageSourceUrls }: Props) => {
   const [items, setItems] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -32,7 +33,7 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls }: Props) => {
             title: "",
             startAt: nowIso,
             org: { id: "hardcoded", name: "hardcoded", logoUrl: null },
-            sourceUrl: null,
+            sourceUrl: imageSourceUrls?.[url] || null,
             posterImageUrl: url,
           }));
           if (mounted) setItems(hardcoded.slice(0, limit));
