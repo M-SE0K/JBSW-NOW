@@ -1,6 +1,6 @@
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, useColorScheme } from "react-native";
+import { View, useColorScheme, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import SectionHeader from "../SectionHeader";
 import BannerSlider from "../BannerSlider";
@@ -9,6 +9,7 @@ import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrate
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import { enrichEventsWithTags, classifyEventTags } from "../../services/tags";
 import EventsList from "../EventsList";
+import type { Event } from "../../types";
 
 export default function Home() {
   const colorScheme = useColorScheme();
@@ -23,6 +24,25 @@ export default function Home() {
 
   const handleMorePress = () => {
     router.push("/events");
+  };
+
+  const handleBannerPress = async (event: Event) => {
+    const urlRaw = event.sourceUrl;
+    if (!urlRaw) {
+      console.log("[UI] BannerSlider:press - no sourceUrl", { id: event.id, posterImageUrl: event.posterImageUrl });
+      return;
+    }
+    try {
+      const url = encodeURI(urlRaw);
+      const can = await Linking.canOpenURL(url);
+      if (!can) {
+        console.warn("[UI] BannerSlider: cannot open url", url);
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (e) {
+      console.warn("[UI] BannerSlider: openURL error", e);
+    }
   };
 
   useEffect(() => {
@@ -167,6 +187,17 @@ export default function Home() {
                   "https://sw.kunsan.ac.kr/_data/sys_program_list/1756961870_z2DhygbkGkgi4_DhICuEXjBXX6NJt3r3oZj8YfFhb68b91c4e.jpg",
                   "https://sw.kunsan.ac.kr/_data/sys_program_list/1758521361_Pgm2cRhLVDaidx81VpefRHzFE8_VIZK6W2eKuxu2m68d0e811.png",
                 ]}
+                imageSourceUrls={{
+                  // 각 이미지 URL에 해당하는 원본 웹사이트 URL 매핑
+                  // 필요시 실제 공지사항 URL로 변경하세요
+                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1756799978_8_uk3XLIRb1eoAs5mFiqZR_C5FQz5bs8WzFzk5iYy68b6a3ea.jpg": "https://swuniv.jbnu.ac.kr",
+                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1753667195_ZPaSl1QTX9Dcu5Q7PpBj6Di9VFUFNjbRQw3HNxs8j6886d67b.jpg": "https://swuniv.jbnu.ac.kr",
+                  "https://img2.stibee.com/104257_3015028_1758707911021760055.png": "https://stibee.com",
+                  "https://csai.jbnu.ac.kr/CrossEditor/binary/images/000858/20250926092439830_MFYZGK2M.png": "https://csai.jbnu.ac.kr",
+                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1756961870_z2DhygbkGkgi4_DhICuEXjBXX6NJt3r3oZj8YfFhb68b91c4e.jpg": "https://sw.kunsan.ac.kr",
+                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1758521361_Pgm2cRhLVDaidx81VpefRHzFE8_VIZK6W2eKuxu2m68d0e811.png": "https://sw.kunsan.ac.kr",
+                }}
+                onPressItem={handleBannerPress}
               />
             </View>
             {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
