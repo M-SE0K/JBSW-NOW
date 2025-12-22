@@ -5,7 +5,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: "jb-sw-integrated-info",
   slug: "jb-sw-integrated-info",
   scheme: "jb-sw-info",
-  owner: "m-se0k",
+  owner: "igaeun8",
   version: "1.0.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
@@ -32,7 +32,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ["expo-notifications"],
     ["expo-secure-store"],
     ["expo-font"],
-    ["expo-firebase-core", { ios: { googleServicesFile: "./GoogleService-Info.plist" } }],
   ],
   
   extra: {
@@ -51,7 +50,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
     },
     eas: {
-      projectId: "af95bb91-387a-49fd-9652-513f03fffcc7",
+      projectId: "3590f61a-0958-4afa-8119-839d918f931e",
     },
   },
 });
