@@ -42,14 +42,27 @@ export default function LoginScreen() {
   const isExpoGo = !__DEV__ || Platform.OS === 'web' ? false : 
     (global as any).expo?.modules?.ExpoGo !== undefined;
   
-  // iOS용 Google Auth 설정
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    scopes: ['profile', 'email'],
-  });
+  // iOS/Android용 Google Auth 설정
+  // 웹에서는 Firebase signInWithPopup을 직접 사용하므로 이 hook은 사용하지 않음
+  // 하지만 React hook 규칙을 위해 항상 호출해야 하므로, 웹일 때는 빈 설정으로 호출
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
+    Platform.OS === 'web' 
+      ? {
+          // 웹에서는 사용하지 않지만 hook 규칙을 위해 빈 설정 전달
+          clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+          webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+          scopes: ['profile', 'email'],
+        }
+      : {
+          clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+          iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+          scopes: ['profile', 'email'],
+        }
+  );
   
-  console.log("[AUTH] iOS Client ID configured for Development Build");
+  if (Platform.OS !== 'web') {
+    console.log("[AUTH] iOS Client ID configured for Development Build");
+  }
 
   // iOS: Google 로그인 응답 처리
   useEffect(() => {
