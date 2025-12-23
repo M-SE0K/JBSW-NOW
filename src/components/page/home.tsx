@@ -6,7 +6,6 @@ import { Ionicons } from "@expo/vector-icons";
 import HeroBanner from "../HeroBanner";
 import UniversityFilter from "../UniversityFilter";
 import { RAGBotCard, AcademicScheduleCard, NoticesCard } from "../Sidebar";
-import FloatingChatButton from "../FloatingChatButton";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import { enrichEventsWithTags, classifyEventTags } from "../../services/tags";
@@ -195,7 +194,6 @@ export default function Home() {
             </View>
           </View>
         </ScrollView>
-        <FloatingChatButton />
       </SafeAreaView>
     );
   }
@@ -216,7 +214,6 @@ export default function Home() {
           // TODO: 상세 라우팅 연결
         }}
       />
-      <FloatingChatButton />
     </SafeAreaView>
   );
 }

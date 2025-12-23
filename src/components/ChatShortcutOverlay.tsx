@@ -29,7 +29,7 @@ const ChatShortcutOverlay = () => {
           },
         ]}
       >
-        <Ionicons name="chatbubble-ellipses-outline" size={26} color="#ffffff" />
+        <Ionicons name="sparkles" size={26} color="#ffffff" />
       </Pressable>
     </View>
   );
