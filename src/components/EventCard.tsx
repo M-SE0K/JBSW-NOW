@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, useColorScheme, TouchableOpacity, Linking, Image, StyleSheet } from "react-native";
+import { View, Text, useColorScheme, TouchableOpacity, Linking, Image, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { isFavorite, subscribe, ensureUserId, toggleFavorite } from "../services/favorites";
 import { incrementHotClick } from "../services/hot";

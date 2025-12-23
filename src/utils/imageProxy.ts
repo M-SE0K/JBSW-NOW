@@ -21,8 +21,8 @@ export function buildProxyUrl(target: string): string | null {
 export function maybeProxyForWeb(url?: string | null): string | undefined | null {
   if (!url) return url ?? null;
   if (typeof window === "undefined") return url; // 네이티브/서버 사이드
-  const proxied = buildProxyUrl(url);
-  return proxied || url;
+  // 웹 환경에서는 원본 URL을 그대로 사용 (프록시 없이)
+  return url;
 }
 
 
