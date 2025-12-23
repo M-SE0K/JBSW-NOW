@@ -6,7 +6,9 @@ import type { Event } from "../types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const ITEM_WIDTH = SCREEN_WIDTH;
-const ITEM_HEIGHT = Math.round(SCREEN_WIDTH * 0.6);
+const ITEM_HEIGHT = Platform.OS === "web" 
+  ? Math.round(SCREEN_WIDTH * 0.25) 
+  : Math.round(SCREEN_WIDTH * 0.6);
 
 export default function HotBannerSlider() {
   const scheme = useColorScheme();
