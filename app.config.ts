@@ -27,7 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     typedRoutes: true,
   },
   plugins: [
-    "expo-dev-client",
+    // "expo-dev-client", // Expo Go에서는 사용 불가 - 주석 처리
     ["expo-router"],
     ["expo-notifications"],
     ["expo-secure-store"],
@@ -35,10 +35,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   
   extra: {
-    router: {
-      // origin: "expo",
-      origin: "https://localhost:8081",
-    },
+    // router 설정 제거 (Expo Go에서 자동으로 처리됨)
     firebase: {
       apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
       authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,

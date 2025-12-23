@@ -8,6 +8,7 @@ import { setupNotificationHandler, startNoticesPolling, stopNoticesPolling, requ
 import { setupAppFocus } from "../src/state/queryClient";
 import { AppHeaderLogo, AppHeaderNavigation, AppHeaderRight } from "../src/components/AppHeader";
 import ChatShortcutOverlay from "../src/components/ChatShortcutOverlay";
+import MobileTabBar from "../src/components/MobileTabBar";
 
 const HeaderComponent = () => {
   const [dimensions, setDimensions] = useState(Dimensions.get("window"));
@@ -20,7 +21,18 @@ const HeaderComponent = () => {
   }, []);
 
   const isDesktop = Platform.OS === "web" && dimensions.width >= 1024;
+  const isMobile = Platform.OS !== "web";
 
+  // 모바일에서는 로고만 표시
+  if (isMobile) {
+    return (
+      <View style={[headerStyles.container, headerStyles.mobileHeader]}>
+        <AppHeaderLogo />
+      </View>
+    );
+  }
+
+  // 웹에서는 전체 헤더 표시
   return (
     <View style={headerStyles.container}>
       <View style={headerStyles.left}>
@@ -49,6 +61,10 @@ const headerStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  mobileHeader: {
+    paddingHorizontal: 16,
+    justifyContent: "flex-start",
   },
   left: {
     flexShrink: 0,
@@ -81,10 +97,11 @@ export default function RootLayout() {
       <SafeAreaProvider style={{ flex: 1 }}>
         <QueryProvider>
           <Tabs
+            tabBar={Platform.OS === "web" ? undefined : MobileTabBar}
             screenOptions={{
               headerShown: true,
               tabBarActiveTintColor: colorScheme === "dark" ? "#fff" : "#111",
-              tabBarStyle: { display: "none" },
+              tabBarStyle: Platform.OS === "web" ? { display: "none" } : { display: "flex" },
               headerStyle: {
                 backgroundColor: colorScheme === "dark" ? "#111827" : "#fff",
               },
@@ -188,7 +205,7 @@ export default function RootLayout() {
             <Tabs.Screen name="test/firebase" options={{ href: null }} />
           </Tabs>
         </QueryProvider>
-        <ChatShortcutOverlay />
+        {Platform.OS === "web" && <ChatShortcutOverlay />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
