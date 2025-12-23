@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet, useColorScheme, Dimensions, Platform } from "react-native";
-import { Link, useRouter, usePathname } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { subscribeUnreadCount } from "../services/notifications";
 import { subscribeAuth, getCurrentUser } from "../services/auth";
@@ -139,6 +139,14 @@ export function AppHeaderRight() {
         </View>
       </Pressable>
 
+      <Pressable 
+        style={styles.iconButton} 
+        onPress={() => router.push("/settings")}
+        accessibilityLabel="menu"
+      >
+        <Ionicons name="menu-outline" color={isDark ? "#E5E7EB" : "#6B7280"} size={20} />
+      </Pressable>
+
       {screenInfo.isDesktop && (
         <>
           {user ? (
@@ -274,5 +282,3 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 });
-
-
