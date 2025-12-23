@@ -51,6 +51,7 @@ export function AppHeaderNavigation() {
 
   const navItems = [
     { route: "/" as const, label: "홈", icon: "home-outline", activeIcon: "home" },
+    { route: "/events" as const, label: "소식", icon: "newspaper-outline", activeIcon: "newspaper" },
     { route: "/favorites" as const, label: "저장", icon: "bookmark-outline", activeIcon: "bookmark" },
     { route: "/hot" as const, label: "인기", icon: "flame-outline", activeIcon: "flame" },
   ];
@@ -103,18 +104,6 @@ export function AppHeaderRight() {
 
   return (
     <View style={styles.rightContainer}>
-      {screenInfo.isDesktop && (
-        <Pressable 
-          style={[styles.aiBadge, { 
-            backgroundColor: isDark ? "rgba(79, 70, 229, 0.2)" : "#EDE9FE",
-            borderColor: isDark ? "rgba(79, 70, 229, 0.3)" : "#DDD6FE"
-          }]}
-        >
-          <Ionicons name="sparkles" size={14} color="#4F46E5" />
-          <Text style={[styles.aiBadgeText, { color: "#4F46E5" }]}>AI 분석 가동중</Text>
-        </Pressable>
-      )}
-
       <Pressable 
         style={styles.iconButton} 
         onPress={() => router.push("/search")}
@@ -241,19 +230,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     flexShrink: 0,
-  },
-  aiBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 6,
-  },
-  aiBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
   },
   iconButton: {
     padding: 4,
