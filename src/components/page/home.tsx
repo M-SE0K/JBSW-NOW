@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, useColorScheme, Text, StyleSheet, Platform, ScrollView } from "react-native";
+import { View, useColorScheme, Text, StyleSheet, Platform, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import HeroBanner from "../HeroBanner";
-import UniversityFilter from "../UniversityFilter";
-import { RAGBotCard, AcademicScheduleCard, NoticesCard } from "../Sidebar";
+import HotBannerSlider from "../HotBannerSlider";
+import QuickMenuGrid from "../QuickMenuGrid";
+import { RAGBotCard } from "../Sidebar";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import { enrichEventsWithTags, classifyEventTags } from "../../services/tags";
@@ -15,8 +15,6 @@ import type { Event } from "../../types";
 
 const isWeb = Platform.OS === "web";
 const SIDEBAR_WIDTH = isWeb ? 300 : 0;
-
-type University = "전체" | "전북대" | "군산대" | "원광대" | "SW사업단";
 
 export default function Home() {
   const colorScheme = useColorScheme();
@@ -29,11 +27,7 @@ export default function Home() {
   const [newsLimit, setNewsLimit] = useState<number>(200);
   const [noticeLimit, setNoticeLimit] = useState<number>(3);
   const [favTick, setFavTick] = useState<number>(0);
-  const [selectedUniversity, setSelectedUniversity] = useState<University>("전체");
 
-  const handleMorePress = () => {
-    router.push("/events");
-  };
 
   useEffect(() => {
     (async () => {
@@ -113,45 +107,46 @@ export default function Home() {
   }
 
   const filteredNews = useMemo(() => {
-    if (selectedUniversity === "전체") {
-      return news;
-    }
-    return news.filter((item) => {
-      const orgName = item.org?.name || "";
-      const tags = item.tags || [];
-      const allText = `${orgName} ${tags.join(" ")}`.toLowerCase();
-      
-      const univMap: Record<University, string[]> = {
-        "전체": [],
-        "전북대": ["전북대", "전북", "jbnu"],
-        "군산대": ["군산대", "군산", "kunsan"],
-        "원광대": ["원광대", "원광", "wonkwang"],
-        "SW사업단": ["sw사업단", "사업단", "sw"],
-      };
-      
-      const keywords = univMap[selectedUniversity];
-      return keywords.some(keyword => allText.includes(keyword.toLowerCase()));
-    });
-  }, [news, selectedUniversity]);
+    return news;
+  }, [news]);
 
-  const headerComponent = (
-    <View style={{ paddingTop: 16 }}>
+  const topHeaderComponent = (
+    <View style={{ alignSelf: "stretch", marginHorizontal: -16, paddingTop: 16, backgroundColor: colorScheme === "dark" ? "#1E293B" : "#F5F5F5" }}>
       <View style={styles.headerWrapper}>
-        <HeroBanner />
-        <View style={styles.feedHeader}>
-          <View style={styles.feedTitleRow}>
-            <Text style={[styles.feedTitle, { color: textColor }]}>
-              실시간 통합 피드
-            </Text>
-            <View style={[styles.aiUpdatingBadge, { backgroundColor: colorScheme === "dark" ? "#1E293B" : "#F1F5F9" }]}>
-              <Ionicons name="sparkles" size={10} color="#4F46E5" />
-              <Text style={[styles.aiUpdatingText, { color: subText }]}>AI Updating...</Text>
-            </View>
+        <HotBannerSlider />
+        {!isWeb && (
+          <View style={{ paddingHorizontal: 0, marginBottom: 16 }}>
+            <QuickMenuGrid 
+              selectedFilter={null}
+              onFilterSelect={(filter) => {
+                if (filter) {
+                  router.push(`/events?tag=${filter}`);
+                }
+              }}
+            />
           </View>
-          <UniversityFilter 
-            selectedUniversity={selectedUniversity}
-            onSelectUniversity={setSelectedUniversity}
-          />
+        )}
+      </View>
+    </View>
+  );
+
+  const newsSectionHeader = (
+    <View style={styles.newsSectionContainer}>
+      <View style={styles.feedHeader}>
+        <View style={styles.feedTitleRow}>
+          <Text style={[styles.feedTitle, { color: textColor }]}>
+            최근 소식
+          </Text>
+          <TouchableOpacity 
+            onPress={() => router.push("/events")}
+            style={styles.moreButton}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.moreButtonText, { color: textColor }]}>
+              더 보기
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={textColor} />
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -160,18 +155,17 @@ export default function Home() {
   const sidebarComponent = (
     <View style={styles.sidebar}>
       {isWeb && <RAGBotCard />}
-      <AcademicScheduleCard />
-      <NoticesCard notices={notices} onPressMore={handleMorePress} />
     </View>
   );
   if (isWeb) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB" }} edges={["left", "right", "bottom"]}>
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          {headerComponent}
+          {topHeaderComponent}
           <View style={styles.contentWrapper}>
             <View style={styles.mainContent}>
-              <View style={styles.feedContainer}>
+              <View style={[styles.feedContainer, { backgroundColor: colorScheme === "dark" ? "#1E293B" : "#FFFFFF", borderRadius: 12, padding: 16 }]}>
+                {newsSectionHeader}
                 {filteredNews.length === 0 ? (
                   <View style={[styles.emptyState, { backgroundColor: placeholder }]}>
                     <Text style={{ color: "#888" }}>최근 소식이 없습니다.</Text>
@@ -188,9 +182,11 @@ export default function Home() {
                   ))
                 )}
               </View>
-              <View style={styles.sidebarContainer}>
-                {sidebarComponent}
-              </View>
+              {isWeb && (
+                <View style={styles.sidebarContainer}>
+                  {sidebarComponent}
+                </View>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -199,21 +195,25 @@ export default function Home() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB" }} edges={["left", "right"]}>
-      <EventsList
-        events={filteredNews as any}
-        placeholderColor={placeholder}
-        extraData={favTick}
-        ListHeaderComponent={headerComponent}
-        ListFooterComponent={
-          <View style={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 8 }}>
-            {sidebarComponent}
+    <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F5F5F5" }} edges={["left", "right"]}>
+      <View style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#1E293B" : "#FFFFFF" }}>
+        <EventsList
+          events={filteredNews as any}
+          placeholderColor={placeholder}
+          extraData={favTick}
+        ListHeaderComponent={
+          <View style={{ width: "100%" }}>
+            {topHeaderComponent}
+            {newsSectionHeader}
           </View>
         }
-        onPressItem={(ev: any) => {
-          // TODO: 상세 라우팅 연결
-        }}
-      />
+          ListFooterComponent={null}
+          style={{ backgroundColor: "transparent" }}
+          onPressItem={(ev: any) => {
+            // TODO: 상세 라우팅 연결
+          }}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -223,16 +223,20 @@ const styles = StyleSheet.create({
     maxWidth: 1400,
     alignSelf: "center",
     width: "100%",
-    paddingHorizontal: Platform.OS === "web" ? 24 : 4,
+    paddingHorizontal: Platform.OS === "web" ? 24 : 8,
+  },
+  newsSectionContainer: {
+    backgroundColor: "transparent",
   },
   feedHeader: {
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 12,
+    paddingHorizontal: 16,
   },
   feedTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    justifyContent: "space-between",
     flexWrap: "wrap",
   },
   feedTitle: {
@@ -240,17 +244,14 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginRight: 8,
   },
-  aiUpdatingBadge: {
+  moreButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    gap: 4,
   },
-  aiUpdatingText: {
-    fontSize: 11,
-    fontWeight: "500",
-    marginLeft: 4,
+  moreButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   contentWrapper: {
     width: "100%",
