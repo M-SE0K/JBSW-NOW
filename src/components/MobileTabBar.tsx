@@ -44,7 +44,7 @@ export default function MobileTabBar(props: any) {
         {
           backgroundColor: isDark ? "#111827" : "#fff",
           borderTopColor: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB",
-          paddingBottom: 8, // Safe area는 부모에서 처리됨
+          paddingBottom: 0,
         },
       ]}
     >
@@ -111,8 +111,9 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-around",
     borderTopWidth: 1,
-    paddingTop: 8,
-    height: 64,
+    paddingTop: 6,
+    height: 60,
+    paddingBottom: 4,
   },
   tabButton: {
     flex: 1,

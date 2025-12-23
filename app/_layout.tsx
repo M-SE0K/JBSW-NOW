@@ -23,11 +23,12 @@ const HeaderComponent = () => {
   const isDesktop = Platform.OS === "web" && dimensions.width >= 1024;
   const isMobile = Platform.OS !== "web";
 
-  // 모바일에서는 로고만 표시
+  // 모바일에서는 로고와 오른쪽 아이콘들 표시
   if (isMobile) {
     return (
       <View style={[headerStyles.container, headerStyles.mobileHeader]}>
         <AppHeaderLogo />
+        <AppHeaderRight />
       </View>
     );
   }
@@ -101,7 +102,19 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: true,
               tabBarActiveTintColor: colorScheme === "dark" ? "#fff" : "#111",
-              tabBarStyle: Platform.OS === "web" ? { display: "none" } : { display: "flex" },
+              tabBarStyle: Platform.OS === "web" ? { display: "none" } : { 
+                display: "flex", 
+                backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB",
+                borderTopWidth: 0, 
+                elevation: 0,
+                shadowOpacity: 0,
+                paddingTop: 0,
+                paddingBottom: 0,
+                marginTop: 0,
+                marginBottom: 0,
+                height: 60,
+              },
+              tabBarBackground: () => <View style={{ backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB", flex: 1 }} />,
               headerStyle: {
                 backgroundColor: colorScheme === "dark" ? "#111827" : "#fff",
               },

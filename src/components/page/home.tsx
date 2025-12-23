@@ -159,7 +159,7 @@ export default function Home() {
 
   const sidebarComponent = (
     <View style={styles.sidebar}>
-      <RAGBotCard />
+      {isWeb && <RAGBotCard />}
       <AcademicScheduleCard />
       <NoticesCard notices={notices} onPressMore={handleMorePress} />
     </View>
@@ -199,7 +199,7 @@ export default function Home() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB" }} edges={["left", "right", "bottom"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB" }} edges={["left", "right"]}>
       <EventsList
         events={filteredNews as any}
         placeholderColor={placeholder}
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     maxWidth: 1400,
     alignSelf: "center",
     width: "100%",
-    paddingHorizontal: 24,
+    paddingHorizontal: Platform.OS === "web" ? 24 : 4,
   },
   feedHeader: {
     paddingTop: 8,

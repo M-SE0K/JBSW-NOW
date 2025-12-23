@@ -15,7 +15,8 @@ const OLLAMA_MODEL = process.env.EXPO_PUBLIC_OLLAMA_MODEL || "llama3.1:8b";
 // 프록시 서버 URL 설정
 // 모바일에서는 localhost 대신 개발 서버의 IP를 사용
 function getProxyUrl(): string {
-  let baseUrl = process.env.EXPO_PUBLIC_PROXY_URL || "http://localhost:4000";
+  let baseUrl = process.env.EXPO_PUBLIC_PROXY_URL || "http://192.168.45.4:4000";
+  // let baseUrl = process.env.EXPO_PUBLIC_PROXY_URL || "http://localhost:4000";
   
   // 환경 변수에서 포트 추출 (기본값: 4000)
   const urlMatch = baseUrl.match(/http:\/\/([^:]+):?(\d+)?/);

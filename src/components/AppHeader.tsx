@@ -115,35 +115,29 @@ export function AppHeaderRight() {
         </Pressable>
       )}
 
-      <Link href="/search" asChild>
-        <Pressable style={styles.iconButton} accessibilityLabel="search">
-          <Ionicons name="search-outline" color={isDark ? "#E5E7EB" : "#6B7280"} size={20} />
-        </Pressable>
-      </Link>
+      <Pressable 
+        style={styles.iconButton} 
+        onPress={() => router.push("/search")}
+        accessibilityLabel="search"
+      >
+        <Ionicons name="search-outline" color={isDark ? "#E5E7EB" : "#6B7280"} size={20} />
+      </Pressable>
 
-      <Link href="/notification" asChild>
-        <Pressable style={styles.iconButton} accessibilityLabel="notifications">
-          <View style={{ position: "relative" }}>
-            <Ionicons name="notifications-outline" color={isDark ? "#E5E7EB" : "#6B7280"} size={20} />
-            {unread > 0 && (
-              <View style={[
-                styles.notificationDot,
-                { borderColor: isDark ? "#111827" : "#fff" }
-              ]} />
-            )}
-          </View>
-        </Pressable>
-      </Link>
-
-      {!screenInfo.isDesktop && (
-        <Pressable
-          style={styles.iconButton}
-          onPress={() => router.push("/settings")}
-          accessibilityLabel="menu"
-        >
-          <Ionicons name="menu-outline" color={isDark ? "#E5E7EB" : "#6B7280"} size={24} />
-        </Pressable>
-      )}
+      <Pressable 
+        style={styles.iconButton} 
+        onPress={() => router.push("/notification")}
+        accessibilityLabel="notifications"
+      >
+        <View style={{ position: "relative" }}>
+          <Ionicons name="notifications-outline" color={isDark ? "#E5E7EB" : "#6B7280"} size={20} />
+          {unread > 0 && (
+            <View style={[
+              styles.notificationDot,
+              { borderColor: isDark ? "#111827" : "#fff" }
+            ]} />
+          )}
+        </View>
+      </Pressable>
 
       {screenInfo.isDesktop && (
         <>
