@@ -54,14 +54,14 @@ export default function LoginScreen() {
           scopes: ['profile', 'email'],
         }
       : {
-          clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-          iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-          scopes: ['profile', 'email'],
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    scopes: ['profile', 'email'],
         }
   );
   
   if (Platform.OS !== 'web') {
-    console.log("[AUTH] iOS Client ID configured for Development Build");
+  console.log("[AUTH] iOS Client ID configured for Development Build");
   }
 
   // iOS: Google 로그인 응답 처리

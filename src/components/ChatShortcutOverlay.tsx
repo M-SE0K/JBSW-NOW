@@ -25,12 +25,12 @@ const ChatShortcutOverlay = () => {
           styles.fab,
           {
             bottom: insets.bottom + 32,
-            backgroundColor: isDark ? "#1f1f1f" : "#111111",
-            opacity: pressed ? 0.7 : 1,
+            backgroundColor: "#6366F1",
+            opacity: pressed ? 0.8 : 1,
           },
         ]}
       >
-        <Ionicons name="sparkles" size={26} color="#ffffff" />
+        <Ionicons name="sparkles" size={28} color="#FFD700" />
       </Pressable>
     </View>
   );
@@ -43,16 +43,16 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: "#6366F1",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 8,
   },
 });
 
