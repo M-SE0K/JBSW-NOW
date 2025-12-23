@@ -1,13 +1,17 @@
+// .env 파일 로드
+try {
+  require("dotenv").config();
+} catch (err) {
+  // dotenv가 없으면 무시
+}
+
 const express = require("express");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-const MAX_CONCURRENT_REQUESTS = parseInt(process.env.MAX_CONCURRENT_REQUESTS || "10", 10);
 
-// 동시 요청 제한 관리
-let activeRequests = 0;
-const requestQueue = [];
+// OLLAMA_URL 처리: 프로토콜이 없으면 http:// 자동 추가
+let OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 
 // JSON 파싱 미들웨어
 app.use(express.json());
@@ -35,28 +39,27 @@ app.use((req, res, next) => {
 // 간단한 헬스체크
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-// 요청 처리 함수
-async function processChatRequest(req, res) {
+// Ollama 프록시 엔드포인트
+app.post("/api/ollama/chat", async (req, res) => {
   try {
     const { model, messages, options } = req.body;
     
     if (!model || !messages) {
-      activeRequests--;
-      // 대기 중인 요청 처리
-      if (requestQueue.length > 0 && activeRequests < MAX_CONCURRENT_REQUESTS) {
-        const next = requestQueue.shift();
-        activeRequests++;
-        processChatRequest(next.req, next.res);
-      }
       return res.status(400).json({ error: "Missing 'model' or 'messages'" });
     }
 
-    // eslint-disable-next-line no-console
-    console.log(`[ollama] chat request → model: ${model}, messages: ${messages.length} (활성 요청: ${activeRequests}/${MAX_CONCURRENT_REQUESTS})`);
-    // eslint-disable-next-line no-console
-    console.log(`[ollama] connecting to: ${OLLAMA_URL}/api/chat`);
+    // URL 검증
+    const chatUrl = `${OLLAMA_URL}/api/chat`;
+    try {
+      new URL(chatUrl);
+    } catch (urlError) {
+      return res.status(500).json({ 
+        error: `유효하지 않은 Ollama URL: ${OLLAMA_URL}`,
+        suggestion: "OLLAMA_URL 환경 변수가 올바른 형식인지 확인하세요."
+      });
+    }
 
-    const response = await fetch(`${OLLAMA_URL}/api/chat`, {
+    const response = await fetch(chatUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -71,19 +74,6 @@ async function processChatRequest(req, res) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      // eslint-disable-next-line no-console
-      console.error(`[ollama] error ${response.status} for model '${model}':`, errorText);
-      
-      // 404 에러인 경우 더 자세한 정보 제공
-      if (response.status === 404) {
-        // eslint-disable-next-line no-console
-        console.error(`[ollama] 모델 '${model}'을 찾을 수 없습니다.`);
-        // eslint-disable-next-line no-console
-        console.error(`[ollama] 사용 가능한 모델 확인: ollama list`);
-        // eslint-disable-next-line no-console
-        console.error(`[ollama] 모델 다운로드: ollama pull ${model}`);
-      }
-      
       return res.status(response.status).json({ 
         error: errorText,
         model: model,
@@ -96,15 +86,7 @@ async function processChatRequest(req, res) {
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[ollama] connection error:", err);
-    
-    // 연결 오류인 경우 더 자세한 정보 제공
     if (err.code === "ECONNREFUSED" || err.message?.includes("fetch failed")) {
-      // eslint-disable-next-line no-console
-      console.error(`[ollama] Ollama 서버에 연결할 수 없습니다: ${OLLAMA_URL}`);
-      // eslint-disable-next-line no-console
-      console.error(`[ollama] Ollama 서버가 실행 중인지 확인하세요: ollama serve`);
       return res.status(503).json({ 
         error: `Ollama 서버에 연결할 수 없습니다: ${OLLAMA_URL}`,
         suggestion: "Ollama 서버가 실행 중인지 확인하세요. 터미널에서 'ollama serve'를 실행하거나 Ollama 데스크톱 앱을 실행하세요."
@@ -112,49 +94,23 @@ async function processChatRequest(req, res) {
     }
     
     res.status(500).json({ error: String(err?.message || err) });
-  } finally {
-    activeRequests--;
-    // 대기 중인 요청 처리
-    if (requestQueue.length > 0 && activeRequests < MAX_CONCURRENT_REQUESTS) {
-      const next = requestQueue.shift();
-      processChatRequest(next.req, next.res);
-    }
-  }
-}
-
-// Ollama 프록시 엔드포인트 (동시 요청 제한 포함)
-app.post("/api/ollama/chat", (req, res) => {
-  if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
-    // 대기열에 추가
-    requestQueue.push({ req, res });
-    // eslint-disable-next-line no-console
-    console.log(`[ollama] 요청 대기열에 추가 (대기 중: ${requestQueue.length})`);
-  } else {
-    activeRequests++;
-    processChatRequest(req, res);
   }
 });
 
 // Ollama 모델 목록 조회
 app.get("/api/ollama/models", async (_req, res) => {
   try {
-    // eslint-disable-next-line no-console
-    console.log("[ollama] listing models");
-
-    const response = await fetch(`${OLLAMA_URL}/api/tags`);
+    const tagsUrl = `${OLLAMA_URL}/api/tags`;
+    const response = await fetch(tagsUrl);
     
     if (!response.ok) {
       const errorText = await response.text();
-      // eslint-disable-next-line no-console
-      console.error(`[ollama] error ${response.status}:`, errorText);
       return res.status(response.status).json({ error: errorText });
     }
 
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[ollama] error:", err);
     res.status(500).json({ error: String(err?.message || err) });
   }
 });
@@ -168,10 +124,8 @@ app.post("/api/ollama/pull", async (req, res) => {
       return res.status(400).json({ error: "Missing 'name'" });
     }
 
-    // eslint-disable-next-line no-console
-    console.log(`[ollama] pulling model: ${name}`);
-
-    const response = await fetch(`${OLLAMA_URL}/api/pull`, {
+    const pullUrl = `${OLLAMA_URL}/api/pull`;
+    const response = await fetch(pullUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -181,8 +135,6 @@ app.post("/api/ollama/pull", async (req, res) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      // eslint-disable-next-line no-console
-      console.error(`[ollama] error ${response.status}:`, errorText);
       return res.status(response.status).json({ error: errorText });
     }
 
@@ -201,8 +153,6 @@ app.post("/api/ollama/pull", async (req, res) => {
     
     res.end();
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[ollama] error:", err);
     res.status(500).json({ error: String(err?.message || err) });
   }
 });
@@ -215,14 +165,8 @@ app.get("/proxy", async (req, res) => {
       return res.status(400).json({ error: "Missing 'url' query" });
     }
 
-    // 요청 대상 로그
-    // eslint-disable-next-line no-console
-    console.log(`[proxy] fetch → ${target}`);
-
     const upstream = await fetch(target);
     if (!upstream.ok) {
-      // eslint-disable-next-line no-console
-      console.warn(`[proxy] upstream ${upstream.status} for ${target}`);
       return res.status(upstream.status).send(await upstream.text());
     }
 
@@ -232,12 +176,8 @@ app.get("/proxy", async (req, res) => {
 
     // 스트리밍 전송
     const arrayBuffer = await upstream.arrayBuffer();
-    // eslint-disable-next-line no-console
-    console.log(`[proxy] delivered ${arrayBuffer.byteLength}B as ${contentType}`);
     res.send(Buffer.from(arrayBuffer));
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[proxy] error:", err);
     res.status(500).json({ error: String(err?.message || err) });
   }
 });
@@ -245,22 +185,22 @@ app.get("/proxy", async (req, res) => {
 // 서버 시작 시 Ollama 연결 확인
 async function checkOllamaConnection() {
   try {
-    const response = await fetch(`${OLLAMA_URL}/api/tags`);
+    const tagsUrl = `${OLLAMA_URL}/api/tags`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(tagsUrl, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    
     if (response.ok) {
       const data = await response.json();
       // eslint-disable-next-line no-console
       console.log(`[ollama] ✅ 연결 성공: ${OLLAMA_URL}`);
-      // eslint-disable-next-line no-console
-      console.log(`[ollama] 사용 가능한 모델: ${data.models?.map(m => m.name).join(", ") || "없음"}`);
-    } else {
-      // eslint-disable-next-line no-console
-      console.warn(`[ollama] ⚠️  연결 확인 실패: ${response.status}`);
     }
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(`[ollama] ⚠️  Ollama 서버에 연결할 수 없습니다: ${OLLAMA_URL}`);
-    // eslint-disable-next-line no-console
-    console.warn(`[ollama] Ollama 서버가 실행 중인지 확인하세요: ollama serve`);
+    // 연결 실패는 조용히 무시 (서버는 계속 실행)
   }
 }
 
