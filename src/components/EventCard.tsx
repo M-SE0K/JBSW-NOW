@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, useColorScheme, TouchableOpacity, Linking, Image, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { isFavorite, subscribe, ensureUserId } from "../services/favorites";
+import { isFavorite, subscribe, ensureUserId, toggleFavorite } from "../services/favorites";
 import { incrementHotClick } from "../services/hot";
 import { cleanCrawledText } from "../utils/textCleaner";
 import { Event } from "../types";
@@ -139,9 +139,25 @@ export const EventCard = ({ event, onPress }: Props) => {
               <Text style={[styles.aiTagText, { color: scheme === "dark" ? "#A78BFA" : "#7C3AED" }]}>Gemini 요약</Text>
             </View>
           )}
-          {dateStr && (
-            <Text style={[styles.date, { color: scheme === "dark" ? "#94A3B8" : "#9CA3AF" }]}>{dateStr}</Text>
-          )}
+          <View style={styles.rightActions}>
+            {dateStr && (
+              <Text style={[styles.date, { color: scheme === "dark" ? "#94A3B8" : "#9CA3AF" }]}>{dateStr}</Text>
+            )}
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                toggleFavorite(event.id);
+              }}
+              style={styles.favoriteButton}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={fav ? "heart" : "heart-outline"}
+                size={18}
+                color={fav ? "#EF4444" : (scheme === "dark" ? "#94A3B8" : "#9CA3AF")}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={[styles.title, { color: scheme === "dark" ? "#F1F5F9" : "#111827" }]} numberOfLines={1}>
@@ -268,9 +284,17 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginLeft: 4,
   },
+  rightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: "auto",
+  },
   date: {
     fontSize: 12,
-    marginLeft: "auto",
+  },
+  favoriteButton: {
+    padding: 4,
   },
   title: {
     fontSize: 16,
@@ -296,5 +320,3 @@ const styles = StyleSheet.create({
 });
 
 export default EventCard;
-
-

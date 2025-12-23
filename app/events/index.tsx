@@ -13,7 +13,7 @@ import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
 import { enrichEventsWithTags, ALLOWED_TAGS } from "../../src/services/tags";
 import { normalize, tokenize, searchByAllWords } from "../../src/services/search";
 import { Event } from "../../src/types";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
 
 // 태그별 색상 매핑 (검색 페이지와 동일)
@@ -32,6 +32,7 @@ const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> 
 
 export default function EventsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ tag?: string }>();
   const scheme = useColorScheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -39,6 +40,13 @@ export default function EventsScreen() {
   const [allItems, setAllItems] = useState<any[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [favTick, setFavTick] = useState<number>(0);
+
+  // URL 파라미터에서 tag를 받아서 초기 selectedTag 설정
+  useEffect(() => {
+    if (params.tag && typeof params.tag === "string") {
+      setSelectedTag(params.tag);
+    }
+  }, [params.tag]);
 
   // 새로운 소식 데이터 로드 (notices만 사용, date 내림차순)
   useEffect(() => {
