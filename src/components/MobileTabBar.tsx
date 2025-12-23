@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, Appearance } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function MobileTabBar(props: any) {
-  const { state, descriptors, navigation } = props;
+  const { state, navigation } = props;
   const colorScheme = Appearance.getColorScheme();
   const isDark = colorScheme === "dark";
 
@@ -16,7 +16,7 @@ export default function MobileTabBar(props: any) {
     { routeName: "events/index", label: "소식", icon: "newspaper-outline", activeIcon: "newspaper" },
     { routeName: "chat/index", label: "", icon: "sparkles", isCenter: true }, // 중앙 버튼
     { routeName: "favorites/index", label: "저장", icon: "bookmark-outline", activeIcon: "bookmark" },
-    { routeName: "settings/index", label: "전체", icon: "menu-outline", activeIcon: "menu" },
+    { routeName: "hot/index", label: "인기", icon: "flame-outline", activeIcon: "flame" },
   ];
 
   const isActive = (routeName: string) => {

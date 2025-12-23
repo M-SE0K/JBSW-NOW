@@ -33,7 +33,7 @@ export default function EventsList({ events, placeholderColor, emptyText = "ìµœê
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
       style={[{ flex: 1 }, style]}
-      contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 24 }}
+      contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24 }}
       showsVerticalScrollIndicator={false}
       ListEmptyComponent={renderEmptyComponent}
       ListHeaderComponent={ListHeaderComponent as any}
