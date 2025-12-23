@@ -5,7 +5,6 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import HotBannerSlider from "../HotBannerSlider";
 import QuickMenuGrid from "../QuickMenuGrid";
-import { RAGBotCard } from "../Sidebar";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import { enrichEventsWithTags, classifyEventTags } from "../../services/tags";
@@ -14,7 +13,6 @@ import EventCard from "../EventCard";
 import type { Event } from "../../types";
 
 const isWeb = Platform.OS === "web";
-const SIDEBAR_WIDTH = isWeb ? 300 : 0;
 
 export default function Home() {
   const colorScheme = useColorScheme();
@@ -152,11 +150,6 @@ export default function Home() {
     </View>
   );
 
-  const sidebarComponent = (
-    <View style={styles.sidebar}>
-      {isWeb && <RAGBotCard />}
-    </View>
-  );
   if (isWeb) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB" }} edges={["left", "right", "bottom"]}>
@@ -182,11 +175,6 @@ export default function Home() {
                   ))
                 )}
               </View>
-              {isWeb && (
-                <View style={styles.sidebarContainer}>
-                  {sidebarComponent}
-                </View>
-              )}
             </View>
           </View>
         </ScrollView>
@@ -268,14 +256,8 @@ const styles = StyleSheet.create({
   },
   feedContainer: {
     flex: 1,
-    marginRight: 32,
     minWidth: 0,
   },
-  sidebarContainer: {
-    width: SIDEBAR_WIDTH,
-    flexShrink: 0,
-  },
-  sidebar: {},
   emptyState: {
     height: 120,
     borderRadius: 12,
