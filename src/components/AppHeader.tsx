@@ -73,7 +73,7 @@ export function AppHeaderNavigation() {
             <Ionicons
               name={active ? (item.activeIcon as any) : (item.icon as any)}
               size={18}
-              color={active ? "#4F46E5" : "#6B7280"}
+              color={active ? "#6466E9" : "#6B7280"}
             />
             <Text style={[styles.navText, active && styles.navTextActive]}>
               {item.label}
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6466E9",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   logoTextNOW: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#4F46E5",
+    color: "#6466E9",
   },
   navigationContainer: {
     flexDirection: "row",
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   navTextActive: {
-    color: "#4F46E5",
+    color: "#6466E9",
     fontWeight: "600",
   },
   rightContainer: {

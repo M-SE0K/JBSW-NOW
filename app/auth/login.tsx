@@ -14,12 +14,11 @@ import {
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import Svg, { Circle, Ellipse, Path, Defs, LinearGradient, Stop } from "react-native-svg";
+import Svg, { Circle, Path, Defs, LinearGradient, Stop } from "react-native-svg";
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential } from "firebase/auth";
 import { auth } from "../../src/db/firebase";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
-import { makeRedirectUri } from "expo-auth-session";
 
 // iOS에서 AuthSession 완료 처리
 WebBrowser.maybeCompleteAuthSession();
@@ -42,11 +41,6 @@ export default function LoginScreen() {
   const isWeb = Platform.OS === "web";
   const isLargeScreen = isWeb && dimensions.width >= 1024;
 
-  // Development Build에서는 iOS Client ID 사용
-  // Expo Go에서는 Web Client ID + 프록시 URI 사용
-  const isExpoGo = !__DEV__ || Platform.OS === 'web' ? false : 
-    (global as any).expo?.modules?.ExpoGo !== undefined;
-  
   // iOS/Android용 Google Auth 설정
   // 웹에서는 Firebase signInWithPopup을 직접 사용하므로 이 hook은 사용하지 않음
   // 하지만 React hook 규칙을 위해 항상 호출해야 하므로, 웹일 때는 빈 설정으로 호출
@@ -107,8 +101,6 @@ export default function LoginScreen() {
       return () => subscription?.remove();
     }
   }, [isWeb]);
-
-
 
   // ID Token으로 Firebase 로그인 (iOS용)
   const handleIdTokenLogin = async (idToken: string) => {
@@ -193,7 +185,7 @@ export default function LoginScreen() {
     }
   };
 
-  const PRIMARY_COLOR = "#6466E9"; // 메인 색상
+
 
   // 웹 대형 화면: 좌우 분할 레이아웃
   if (isLargeScreen) {
@@ -206,12 +198,12 @@ export default function LoginScreen() {
             <Svg width="100%" height="100%" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice">
               <Defs>
                 <LinearGradient id="grad_bg" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%" stopColor={PRIMARY_COLOR} stopOpacity="0.08" />
-                  <Stop offset="100%" stopColor={PRIMARY_COLOR} stopOpacity="0.02" />
+                  <Stop offset="0%" stopColor={"#6466E9"} stopOpacity="0.08" />
+                  <Stop offset="100%" stopColor={"#6466E9"} stopOpacity="0.02" />
                 </LinearGradient>
                 <LinearGradient id="circle_grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%" stopColor={PRIMARY_COLOR} stopOpacity="0.15" />
-                  <Stop offset="100%" stopColor={PRIMARY_COLOR} stopOpacity="0.05" />
+                  <Stop offset="0%" stopColor={"#6466E9"} stopOpacity="0.15" />
+                  <Stop offset="100%" stopColor={"#6466E9"} stopOpacity="0.05" />
                 </LinearGradient>
               </Defs>
               
@@ -223,21 +215,21 @@ export default function LoginScreen() {
               <Circle cx="800" cy="800" r="450" fill="url(#circle_grad)" opacity="0.5" />
               
               {/* Floating Elements */}
-              <Circle cx="650" cy="150" r="80" fill={PRIMARY_COLOR} fillOpacity="0.04" />
-              <Circle cx="100" cy="650" r="120" fill={PRIMARY_COLOR} fillOpacity="0.03" />
-              <Circle cx="400" cy="400" r="250" fill="none" stroke={PRIMARY_COLOR} strokeOpacity="0.05" strokeWidth="1" strokeDasharray="10 10" />
+              <Circle cx="650" cy="150" r="80" fill={"#6466E9"} fillOpacity="0.04" />
+              <Circle cx="100" cy="650" r="120" fill={"#6466E9"} fillOpacity="0.03" />
+              <Circle cx="400" cy="400" r="250" fill="none" stroke={"#6466E9"} strokeOpacity="0.05" strokeWidth="1" strokeDasharray="10 10" />
             </Svg>
           </View>
           
           <View style={styles.leftContent}>
             {/* Logo */}
             <View style={styles.leftHeader}>
-              <View style={[styles.webLogoBox, { backgroundColor: "#FFFFFF", borderColor: `${PRIMARY_COLOR}30`, borderWidth: 1 }]}>
-                <Text style={[styles.webLogoLetter, { color: PRIMARY_COLOR }]}>J</Text>
+              <View style={[styles.webLogoBox, { backgroundColor: "#6466E9" }]}>
+                <Text style={[styles.webLogoLetter, { color: "#FFFFFF" }]}>J</Text>
               </View>
               <View style={styles.logoTextContainer}>
                 <Text style={[styles.logoTextJBSW, { color: "#111827" }]}>JBSW</Text>
-                <Text style={[styles.logoTextNOW, { color: PRIMARY_COLOR, marginLeft: 4 }]}>NOW</Text>
+                <Text style={[styles.logoTextNOW, { color: "#6466E9", marginLeft: 4 }]}>NOW</Text>
               </View>
             </View>
 
@@ -245,7 +237,7 @@ export default function LoginScreen() {
             <View style={styles.leftTitleSection}>
               <Text style={[styles.leftTitle, { color: "#111827" }]}>
                 전북권 대학 SW 정보 통합{"\n"}플랫폼,{" "}
-                <Text style={{ color: PRIMARY_COLOR }}>JBSW NOW</Text>
+                <Text style={{ color: "#6466E9" }}>JBSW NOW</Text>
               </Text>
               <Text style={[styles.leftSubtitle, { color: "#6B7280" }]}>
                 전북권 모든 대학의 SW 정보를{"\n"}한눈에 쉽고 빠르게 확인하세요.
@@ -287,14 +279,14 @@ export default function LoginScreen() {
 
               <View style={styles.webInfoCard}>
                 <View style={styles.webIconWrapper}>
-                  <Ionicons name="school" size={28} color={PRIMARY_COLOR} />
+                  <Ionicons name="school" size={28} color={"#6466E9"} />
                 </View>
                 <Text style={styles.webInfoText}>
                   재학생 인증을 위해{"\n"}학교 구글 계정으로 로그인해주세요
                 </Text>
                 <View style={styles.webDomainBadge}>
-                  <Ionicons name="mail-outline" size={14} color={PRIMARY_COLOR} style={{ marginRight: 6 }} />
-                  <Text style={[styles.webDomainText, { color: PRIMARY_COLOR }]}>@jbnu.ac.kr</Text>
+                  <Ionicons name="mail-outline" size={14} color={"#6466E9"} style={{ marginRight: 6 }} />
+                  <Text style={[styles.webDomainText, { color: "#6466E9" }]}>@jbnu.ac.kr</Text>
                 </View>
               </View>
 
@@ -303,7 +295,7 @@ export default function LoginScreen() {
                   styles.webGoogleButton,
                   { 
                     opacity: pressed || loading ? 0.9 : 1,
-                    backgroundColor: PRIMARY_COLOR,
+                    backgroundColor: "#6466E9",
                   }
                 ]}
                 onPress={handleGoogleSignIn}
@@ -393,22 +385,21 @@ export default function LoginScreen() {
           style={({ pressed }) => [
             styles.googleButton,
             {
-              backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
-              opacity: pressed || loading ? 0.8 : 1,
-              ...(Platform.OS === "web" && {
-                boxShadow: pressed ? "0 2px 8px rgba(0, 0, 0, 0.1)" : "0 4px 12px rgba(0, 0, 0, 0.1)",
-              }),
+              backgroundColor: "#6466E9",
+              opacity: pressed || loading ? 0.9 : 1,
             }
           ]}
           onPress={handleGoogleSignIn}
           disabled={loading || (Platform.OS !== 'web' && !request)}
         >
           {loading ? (
-            <ActivityIndicator color={isDark ? "#6366F1" : "#6366F1"} />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
             <>
-              <Ionicons name="logo-google" size={20} color={isDark ? "#E5E7EB" : "#374151"} />
-              <Text style={[styles.googleButtonText, { color: isDark ? "#F9FAFB" : "#111827", marginLeft: 10 }]}>
+              <View style={styles.mobileGoogleIconWrapper}>
+                <Text style={styles.mobileGoogleIcon}>G</Text>
+              </View>
+              <Text style={[styles.googleButtonText, { color: "#FFFFFF", marginLeft: 12 }]}>
                 Google 계정으로 계속하기
               </Text>
             </>
@@ -424,7 +415,7 @@ const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
     flexDirection: "row",
-    minHeight: "100vh",
+    ...(Platform.OS === "web" && { minHeight: "100vh" as any }),
   },
   leftPanel: {
     width: "50%",
@@ -481,7 +472,7 @@ const styles = StyleSheet.create({
   },
   leftTitleSection: {
     alignItems: "flex-start",
-    marginBottom: "auto",
+    marginBottom: "auto" as any,
   },
   leftTitle: {
     fontSize: 36,
@@ -713,20 +704,31 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     height: 56,
-    borderRadius: 16,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: Platform.OS === "web" ? 0 : 1,
-    borderColor: "rgba(99, 102, 241, 0.2)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowColor: "#6466E9",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
     elevation: 4,
+  },
+  mobileGoogleIconWrapper: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mobileGoogleIcon: {
+    color: "#4285F4",
+    fontSize: 16,
+    fontWeight: "800",
   },
   googleButtonText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-});
+}) as any;

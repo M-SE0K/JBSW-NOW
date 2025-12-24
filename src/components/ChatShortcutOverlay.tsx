@@ -11,7 +11,13 @@ const ChatShortcutOverlay = () => {
   const pathname = usePathname();
 
   // 웹에서만 표시 (모바일은 하단 탭바 사용)
-  if (Platform.OS !== "web" || pathname?.startsWith("/chat")) {
+  // 로그인/회원가입 페이지에서는 표시하지 않음
+  if (
+    Platform.OS !== "web" || 
+    pathname?.startsWith("/chat") ||
+    pathname?.startsWith("/auth/login") ||
+    pathname?.startsWith("/auth/signup")
+  ) {
     return null;
   }
 
@@ -25,12 +31,12 @@ const ChatShortcutOverlay = () => {
           styles.fab,
           {
             bottom: insets.bottom + 32,
-            backgroundColor: "#6366F1",
+            backgroundColor: "#6466E9",
             opacity: pressed ? 0.8 : 1,
           },
         ]}
       >
-        <Ionicons name="sparkles" size={28} color="#FFD700" />
+        <Ionicons name="chatbubble-ellipses" size={24} color="#FFFFFF" />
       </Pressable>
     </View>
   );
@@ -48,7 +54,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#6366F1",
+    shadowColor: "#6466E9",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

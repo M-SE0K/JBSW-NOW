@@ -15,7 +15,7 @@ export default function MobileTabBar(props: any) {
   const tabs = [
     { routeName: "index", label: "홈", icon: "home-outline", activeIcon: "home" },
     { routeName: "events/index", label: "소식", icon: "newspaper-outline", activeIcon: "newspaper" },
-    { routeName: "chat/index", label: "", icon: "sparkles", isCenter: true }, // 중앙 버튼
+    { routeName: "chat/index", label: "", icon: "chatbubble-ellipses", isCenter: true }, // 중앙 버튼
     { routeName: "favorites/index", label: "저장", icon: "bookmark-outline", activeIcon: "bookmark" },
     { routeName: "hot/index", label: "인기", icon: "flame-outline", activeIcon: "flame" },
   ];
@@ -61,12 +61,12 @@ export default function MobileTabBar(props: any) {
                 style={({ pressed }) => [
                   styles.centerButton,
                   {
-                    backgroundColor: "#6366F1",
+                    backgroundColor: "#6466E9",
                     opacity: pressed ? 0.8 : 1,
                   },
                 ]}
               >
-                <Ionicons name={tab.icon as any} size={28} color="#FFD700" />
+                <Ionicons name={tab.icon as any} size={24} color="#FFFFFF" />
               </Pressable>
             </View>
           );
@@ -84,14 +84,14 @@ export default function MobileTabBar(props: any) {
             <Ionicons
               name={(active ? tab.activeIcon : tab.icon) as any}
               size={24}
-              color={active ? "#6366F1" : (isDark ? "#9CA3AF" : "#6B7280")}
+              color={active ? "#6466E9" : (isDark ? "#9CA3AF" : "#6B7280")}
             />
             {tab.label && (
               <Text
                 style={[
                   styles.tabLabel,
                   {
-                    color: active ? "#6366F1" : (isDark ? "#9CA3AF" : "#6B7280"),
+                    color: active ? "#6466E9" : (isDark ? "#9CA3AF" : "#6B7280"),
                     fontWeight: active ? "700" : "500",
                   },
                 ]}
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#6366F1",
+    shadowColor: "#6466E9",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
