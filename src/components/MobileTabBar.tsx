@@ -39,12 +39,12 @@ export default function MobileTabBar(props: any) {
   };
 
   return (
-    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: isDark ? "#111827" : "#fff" }}>
+    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: "transparent" }}>
       <View
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? "#111827" : "#fff",
+            backgroundColor: "transparent",
             borderTopColor: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB",
           },
         ]}
