@@ -117,7 +117,7 @@ export function AppHeaderRight() {
         onPress={() => router.push("/notification")}
         accessibilityLabel="notifications"
       >
-        <View style={{ position: "relative" }}>
+        <View style={{ position: "relative", width: 20, height: 20 }}>
           <Ionicons name="notifications-outline" color={isDark ? "#E5E7EB" : "#6B7280"} size={20} />
           {unread > 0 && (
             <View style={[
@@ -236,13 +236,14 @@ const styles = StyleSheet.create({
   },
   notificationDot: {
     position: "absolute",
-    top: -2,
-    right: -2,
+    top: -4,
+    right: -4,
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: "#EF4444",
     borderWidth: 2,
+    zIndex: 10,
   },
   loginButton: {
     flexDirection: "row",

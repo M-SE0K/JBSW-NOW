@@ -247,7 +247,7 @@ export default function HotScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}> 
+    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}> 
       <View style={styles.content}>
         {loading ? (
           <View style={styles.loadingBox}>

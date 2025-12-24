@@ -170,7 +170,7 @@ export default function EventsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["bottom", "left", "right"]}>
       {/* 검색 헤더 */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
@@ -292,6 +292,7 @@ const styles = {
     alignItems: "center" as const,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    paddingTop: 0,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
