@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
@@ -41,6 +41,16 @@ export default function WebQuickMenu() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const router = useRouter();
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get("window").width);
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const isSmallScreen = screenWidth < 768;
 
   const handleFilterPress = (filter: FilterTag) => {
     router.push(`/events?tag=${filter}`);
@@ -56,6 +66,7 @@ export default function WebQuickMenu() {
             key={filterKey}
             style={[
               styles.menuItem,
+              isSmallScreen && styles.menuItemSmall,
               {
                 backgroundColor: isDark ? config.bgColor.dark : config.bgColor.light,
               }
@@ -63,31 +74,46 @@ export default function WebQuickMenu() {
             onPress={() => handleFilterPress(filterKey)}
             activeOpacity={0.8}
           >
-            <Text
-              style={[
-                styles.label,
-                {
-                  color: isDark ? config.iconColor.dark : config.iconColor.light,
-                  fontWeight: "700",
-                }
-              ]}
-            >
-              {config.label}
-            </Text>
-            <View
-              style={[
-                styles.iconBox,
-                {
-                  backgroundColor: "#FFFFFF",
-                }
-              ]}
-            >
-              <Ionicons
-                name={config.icon}
-                size={28}
-                color={isDark ? config.iconColor.dark : config.iconColor.light}
-              />
-            </View>
+            {isSmallScreen ? (
+              <>
+                <Ionicons
+                  name={config.icon}
+                  size={32}
+                  color={isDark ? config.iconColor.dark : config.iconColor.light}
+                />
+                <Text
+                  style={[
+                    styles.label,
+                    styles.labelSmall,
+                    {
+                      color: isDark ? config.iconColor.dark : config.iconColor.light,
+                      fontWeight: "700",
+                    }
+                  ]}
+                >
+                  {config.label}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text
+                  style={[
+                    styles.label,
+                    {
+                      color: isDark ? config.iconColor.dark : config.iconColor.light,
+                      fontWeight: "700",
+                    }
+                  ]}
+                >
+                  {config.label}
+                </Text>
+                <Ionicons
+                  name={config.icon}
+                  size={32}
+                  color={isDark ? config.iconColor.dark : config.iconColor.light}
+                />
+              </>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -116,18 +142,24 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     minHeight: 100,
   },
-  iconBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+  menuItemSmall: {
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    minHeight: 90,
+    gap: 8,
   },
   label: {
     fontSize: 18,
     textAlign: "left",
     flex: 1,
+  },
+  labelSmall: {
+    fontSize: 14,
+    textAlign: "center",
+    flex: 0,
   },
 });
 

@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet, Appearance } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function MobileTabBar(props: any) {
@@ -38,16 +39,16 @@ export default function MobileTabBar(props: any) {
   };
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: isDark ? "#111827" : "#fff",
-          borderTopColor: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB",
-          paddingBottom: 0,
-        },
-      ]}
-    >
+    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: isDark ? "#111827" : "#fff" }}>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: isDark ? "#111827" : "#fff",
+            borderTopColor: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB",
+          },
+        ]}
+      >
       {tabs.map((tab, index) => {
         const active = isActive(tab.routeName);
 
@@ -101,7 +102,8 @@ export default function MobileTabBar(props: any) {
           </Pressable>
         );
       })}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
