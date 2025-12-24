@@ -1,18 +1,12 @@
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { FlatList, RefreshControl, View, Button, TextInput, Pressable, ActivityIndicator, Text, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
+import { View, TextInput, Text, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import EventCard from "../../src/components/EventCard";
-import Loading from "../../src/components/Loading";
-import ErrorState from "../../src/components/ErrorState";
-import EmptyState from "../../src/components/EmptyState";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
-import { enrichEventsWithTags, ALLOWED_TAGS } from "../../src/services/tags";
-import { normalize, tokenize, searchByAllWords } from "../../src/services/search";
-import { Event } from "../../src/types";
+import { enrichEventsWithTags } from "../../src/services/tags";
+import { normalize, searchByAllWords } from "../../src/services/search";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
 
@@ -170,7 +164,7 @@ export default function EventsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "left", "right"]}>
       {/* 검색 헤더 */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
@@ -292,9 +286,7 @@ const styles = {
     alignItems: "center" as const,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingTop: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingTop: 8,
   },
   searchContainer: {
     width: "100%" as const,

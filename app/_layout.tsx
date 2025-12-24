@@ -25,8 +25,18 @@ const HeaderComponent = () => {
 
   // 모바일에서는 로고와 오른쪽 아이콘들 표시
   if (isMobile) {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === "dark";
     return (
-      <View style={[headerStyles.container, headerStyles.mobileHeader, { paddingHorizontal: 16 }]}>
+      <View style={[
+        headerStyles.container, 
+        headerStyles.mobileHeader, 
+        { 
+          paddingHorizontal: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB",
+        }
+      ]}>
         <AppHeaderLogo />
         <AppHeaderRight />
       </View>
@@ -53,7 +63,8 @@ const HeaderComponent = () => {
 
 const CustomHeader = () => {
   const colorScheme = useColorScheme();
-  const backgroundColor = colorScheme === "dark" ? "#111827" : "#fff";
+  const isDark = colorScheme === "dark";
+  const backgroundColor = isDark ? "#111827" : "#fff";
 
   const headerContent = <HeaderComponent />;
 
@@ -77,7 +88,7 @@ const headerStyles = StyleSheet.create({
   container: {
     width: "100%",
     paddingHorizontal: 24,
-    height: 64,
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -146,12 +157,16 @@ export default function RootLayout() {
 
             <Tabs.Screen
               name="favorites/index"
-              options={{}}
+              options={{
+                headerShown: false,
+              }}
             />
 
             <Tabs.Screen
               name="hot/index"
-              options={{}}
+              options={{
+                headerShown: false,
+              }}
             />
             <Tabs.Screen
               name="auth/login"
@@ -181,6 +196,7 @@ export default function RootLayout() {
               name="events/index"
               options={{
                 href: null,
+                headerShown: false,
               }}
             />
             <Tabs.Screen name="events/[id]" options={{ href: null }} />
