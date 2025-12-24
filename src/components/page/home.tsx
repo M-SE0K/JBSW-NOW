@@ -1,16 +1,16 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, useColorScheme, Text, StyleSheet, Platform, ScrollView, TouchableOpacity } from "react-native";
+import { View, useColorScheme, Text, StyleSheet, Platform, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import HotBannerSlider from "../HotBannerSlider";
 import QuickMenuGrid from "../QuickMenuGrid";
+import WebQuickMenu from "../WebQuickMenu";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import { enrichEventsWithTags, classifyEventTags } from "../../services/tags";
 import EventsList from "../EventsList";
 import EventCard from "../EventCard";
-import type { Event } from "../../types";
 
 const isWeb = Platform.OS === "web";
 
@@ -18,14 +18,20 @@ export default function Home() {
   const colorScheme = useColorScheme();
   const placeholder = colorScheme === "dark" ? "#2B2F33" : "#E4EAEE";
   const textColor = colorScheme === "dark" ? "#fff" : "#111";
-  const subText = colorScheme === "dark" ? "#C8CDD2" : "#6B7280";
   const router = useRouter();
   const [news, setNews] = useState<any[]>([]);
-  const [notices, setNotices] = useState<any[]>([]);
-  const [newsLimit, setNewsLimit] = useState<number>(200);
-  const [noticeLimit, setNoticeLimit] = useState<number>(3);
+  const [newsLimit] = useState<number>(200);
+  const [noticeLimit] = useState<number>(3);
   const [favTick, setFavTick] = useState<number>(0);
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get("window").width);
 
+  // 화면 크기 변경 감지
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -66,7 +72,6 @@ export default function Home() {
         const eventsData = await enrichEventsWithTags(Array.isArray(eventsDataRaw) ? eventsDataRaw : [] as any);
 
         const merged = [...noticeAsEvents, ...eventsData];
-        setNotices(noticeAsEvents);
         setNews(merged);
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
@@ -104,13 +109,12 @@ export default function Home() {
     return new Date().toISOString();
   }
 
-  const filteredNews = useMemo(() => {
-    return news;
-  }, [news]);
+  // 전체화면일 때는 패딩 0, 작은 화면일 때는 패딩 추가
+  const headerPadding = isWeb && screenWidth >= 1400 ? 0 : (isWeb ? 24 : 8);
 
   const topHeaderComponent = (
     <View style={{ alignSelf: "stretch", marginHorizontal: -16, paddingTop: 16, backgroundColor: colorScheme === "dark" ? "#1E293B" : "#F5F5F5" }}>
-      <View style={styles.headerWrapper}>
+      <View style={[styles.headerWrapper, { paddingHorizontal: headerPadding }]}>
         <HotBannerSlider />
         {!isWeb && (
           <View style={{ paddingHorizontal: 0, marginBottom: 16 }}>
@@ -122,6 +126,11 @@ export default function Home() {
                 }
               }}
             />
+          </View>
+        )}
+        {isWeb && (
+          <View style={{ marginTop: 24, marginBottom: 8 }}>
+            <WebQuickMenu />
           </View>
         )}
       </View>
@@ -159,12 +168,12 @@ export default function Home() {
             <View style={styles.mainContent}>
               <View style={[styles.feedContainer, { backgroundColor: colorScheme === "dark" ? "#1E293B" : "#FFFFFF", borderRadius: 12, padding: 16 }]}>
                 {newsSectionHeader}
-                {filteredNews.length === 0 ? (
+                {news.length === 0 ? (
                   <View style={[styles.emptyState, { backgroundColor: placeholder }]}>
                     <Text style={{ color: "#888" }}>최근 소식이 없습니다.</Text>
                   </View>
                 ) : (
-                  filteredNews.map((item) => (
+                  news.map((item) => (
                     <EventCard 
                       key={item.id}
                       event={item} 
@@ -186,7 +195,7 @@ export default function Home() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F5F5F5" }} edges={["left", "right"]}>
       <View style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#1E293B" : "#FFFFFF" }}>
         <EventsList
-          events={filteredNews as any}
+          events={news}
           placeholderColor={placeholder}
           extraData={favTick}
         ListHeaderComponent={
@@ -211,7 +220,6 @@ const styles = StyleSheet.create({
     maxWidth: 1400,
     alignSelf: "center",
     width: "100%",
-    paddingHorizontal: Platform.OS === "web" ? 24 : 8,
   },
   newsSectionContainer: {
     backgroundColor: "transparent",

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Tabs } from "expo-router";
 import { useColorScheme, View, StyleSheet, Dimensions, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { QueryProvider } from "../src/state/queryClient";
 import { setupNotificationHandler, startNoticesPolling, stopNoticesPolling, requestLocalNotificationPermission } from "../src/services/notifications";
 import { setupAppFocus } from "../src/state/queryClient";
@@ -26,7 +26,7 @@ const HeaderComponent = () => {
   // 모바일에서는 로고와 오른쪽 아이콘들 표시
   if (isMobile) {
     return (
-      <View style={[headerStyles.container, headerStyles.mobileHeader]}>
+      <View style={[headerStyles.container, headerStyles.mobileHeader, { paddingHorizontal: 16 }]}>
         <AppHeaderLogo />
         <AppHeaderRight />
       </View>
@@ -51,12 +51,31 @@ const HeaderComponent = () => {
   );
 };
 
+const CustomHeader = () => {
+  const colorScheme = useColorScheme();
+  const backgroundColor = colorScheme === "dark" ? "#111827" : "#fff";
+
+  const headerContent = <HeaderComponent />;
+
+  // 웹에서는 SafeAreaView 불필요, 모바일에서는 SafeAreaView 사용
+  if (Platform.OS === "web") {
+    return (
+      <View style={{ backgroundColor }}>
+        {headerContent}
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView edges={["top"]} style={{ backgroundColor }}>
+      {headerContent}
+    </SafeAreaView>
+  );
+};
+
 const headerStyles = StyleSheet.create({
   container: {
     width: "100%",
-    maxWidth: 1280,
-    marginLeft: "auto",
-    marginRight: "auto",
     paddingHorizontal: 24,
     height: 64,
     flexDirection: "row",
@@ -64,11 +83,12 @@ const headerStyles = StyleSheet.create({
     justifyContent: "space-between",
   },
   mobileHeader: {
-    paddingHorizontal: 16,
-    justifyContent: "flex-start",
+    justifyContent: "space-between",
   },
   left: {
-    flexShrink: 0,
+    flex: 1,
+    alignItems: "flex-start",
+    justifyContent: "center",
   },
   center: {
     flex: 1,
@@ -77,7 +97,9 @@ const headerStyles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   right: {
-    flexShrink: 0,
+    flex: 1,
+    alignItems: "flex-end",
+    justifyContent: "center",
   },
 });
 
@@ -100,7 +122,7 @@ export default function RootLayout() {
           <Tabs
             tabBar={Platform.OS === "web" ? undefined : MobileTabBar}
             screenOptions={{
-              headerShown: true,
+              header: () => <CustomHeader />,
               tabBarActiveTintColor: colorScheme === "dark" ? "#fff" : "#111",
               tabBarStyle: Platform.OS === "web" ? { display: "none" } : { 
                 display: "flex", 
@@ -115,36 +137,21 @@ export default function RootLayout() {
                 height: 60,
               },
               tabBarBackground: () => <View style={{ backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB", flex: 1 }} />,
-              headerStyle: {
-                backgroundColor: colorScheme === "dark" ? "#111827" : "#fff",
-              },
             }}
           >
             <Tabs.Screen
               name="index"
-              options={{
-                title: "",
-                headerTitle: () => <HeaderComponent />,
-                headerTitleAlign: "left",
-              }}
+              options={{}}
             />
 
             <Tabs.Screen
               name="favorites/index"
-              options={{
-                title: "",
-                headerTitle: () => <HeaderComponent />,
-                headerTitleAlign: "left",
-              }}
+              options={{}}
             />
 
             <Tabs.Screen
               name="hot/index"
-              options={{
-                title: "",
-                headerTitle: () => <HeaderComponent />,
-                headerTitleAlign: "left",
-              }}
+              options={{}}
             />
             <Tabs.Screen
               name="auth/login"
@@ -174,7 +181,6 @@ export default function RootLayout() {
               name="events/index"
               options={{
                 href: null,
-                headerShown: false,
               }}
             />
             <Tabs.Screen name="events/[id]" options={{ href: null }} />
