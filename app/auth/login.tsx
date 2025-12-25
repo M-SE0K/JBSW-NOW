@@ -11,12 +11,15 @@ import {
   Dimensions,
   ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Circle, Path, Defs, LinearGradient, Stop } from "react-native-svg";
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential } from "firebase/auth";
-import { auth } from "../../src/db/firebase";
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential, Auth } from "firebase/auth";
+import { auth as firebaseAuth } from "../../src/db/firebase";
+
+// 타입 안전성을 위해 auth를 명시적으로 타입 지정
+const auth: Auth = firebaseAuth;
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 
@@ -34,6 +37,7 @@ const showAlert = (title: string, message: string) => {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ redirect?: string }>();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const [loading, setLoading] = useState(false);
@@ -82,7 +86,7 @@ export default function LoginScreen() {
   // 웹에서 리디렉트 결과 처리
   useEffect(() => {
     if (Platform.OS === 'web') {
-      getRedirectResult(auth).then((result) => {
+      getRedirectResult(auth as any).then((result) => {
         if (result?.user) {
           handleAuthSuccess(result.user);
         }
@@ -107,19 +111,22 @@ export default function LoginScreen() {
     try {
       // Firebase에 Google credential로 로그인
       const credential = GoogleAuthProvider.credential(idToken);
-      const result = await signInWithCredential(auth, credential);
+      const result = await signInWithCredential(auth as any, credential);
       
       // 이메일 도메인 체크
       const email = result.user.email;
       if (!email || !email.endsWith("@jbnu.ac.kr")) {
-        await auth.signOut();
+        await (auth as any).signOut();
         showAlert("로그인 실패", "전북대학교(@jbnu.ac.kr) 계정으로만 로그인할 수 있습니다.");
         setLoading(false);
         return;
       }
       
       console.log("[AUTH] Firebase login success:", email);
-      router.replace("/settings");
+      
+      // 리다이렉트 파라미터가 있으면 해당 페이지로, 없으면 설정 페이지로
+      const redirectPath = params.redirect ? decodeURIComponent(params.redirect) : "/settings";
+      router.replace(redirectPath as any);
     } catch (e: any) {
       console.error("[AUTH] Firebase credential error:", e);
       showAlert("오류", "로그인 처리 중 문제가 발생했습니다.");
@@ -132,13 +139,16 @@ export default function LoginScreen() {
     // 이메일 도메인 체크
     const email = user.email;
     if (!email || !email.endsWith("@jbnu.ac.kr")) {
-      await auth.signOut();
+      await (auth as any).signOut();
       showAlert("로그인 실패", "전북대학교(@jbnu.ac.kr) 계정으로만 로그인할 수 있습니다.");
       return;
     }
     
     console.log("[AUTH] Login success:", email);
-    router.replace("/settings");
+    
+    // 리다이렉트 파라미터가 있으면 해당 페이지로, 없으면 설정 페이지로
+    const redirectPath = params.redirect ? decodeURIComponent(params.redirect) : "/settings";
+    router.replace(redirectPath as any);
   };
 
   const handleGoogleSignIn = async () => {
@@ -152,11 +162,11 @@ export default function LoginScreen() {
         provider.setCustomParameters({ prompt: 'select_account' });
         
         try {
-          const result = await signInWithPopup(auth, provider);
+          const result = await signInWithPopup(auth as any, provider);
           await handleAuthSuccess(result.user);
         } catch (popupError: any) {
           if (popupError.code === 'auth/popup-blocked') {
-            await signInWithRedirect(auth, provider);
+            await signInWithRedirect(auth as any, provider);
           } else if (popupError.code === 'auth/popup-closed-by-user') {
             // 사용자가 팝업을 닫음 - 무시
           } else {

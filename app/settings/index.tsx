@@ -10,7 +10,15 @@ import { subscribeAuth, logout, getCurrentUser } from "../../src/services/auth";
 import { User } from "firebase/auth";
 
 // 플랫폼별 Alert 함수
-const showAlert = (title: string, message: string, buttons?: Array<{text: string, style?: string, onPress?: () => void}>) => {
+const showAlert = (
+  title: string,
+  message: string,
+  buttons?: Array<{
+    text: string;
+    style?: "cancel" | "default" | "destructive";
+    onPress?: () => void;
+  }>
+) => {
   if (Platform.OS === 'web') {
     if (buttons && buttons.length > 1) {
       // 확인/취소 버튼이 있는 경우

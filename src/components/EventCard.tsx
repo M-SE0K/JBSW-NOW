@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, useColorScheme, TouchableOpacity, Linking, Image, StyleSheet, Platform } from "react-native";
+import { View, Text, useColorScheme, TouchableOpacity, Linking, Image, StyleSheet, Platform, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { isFavorite, subscribe, ensureUserId, toggleFavorite } from "../services/favorites";
 import { incrementHotClick } from "../services/hot";
@@ -16,6 +16,8 @@ export const EventCard = ({ event, onPress }: Props) => {
   const scheme = useColorScheme();
   const [fav, setFav] = React.useState<boolean>(isFavorite(event.id));
   const [hotClickCount, setHotClickCount] = React.useState<number | null>(event.hotClickCount ?? null);
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+  const bgColorAnim = React.useRef(new Animated.Value(0)).current;
   
   React.useEffect(() => {
     ensureUserId();
@@ -72,18 +74,64 @@ export const EventCard = ({ event, onPress }: Props) => {
   const hasHotTag = event.tags?.some(t => t.toLowerCase().includes("hot") || t.includes("HOT")) || (hotClickCount && hotClickCount > 10);
   const otherTags = event.tags?.filter(t => !t.toLowerCase().includes("hot")) || [];
 
+  const handlePressIn = () => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 0.98,
+        useNativeDriver: true,
+        tension: 300,
+        friction: 10,
+      }),
+      Animated.timing(bgColorAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 300,
+        friction: 10,
+      }),
+      Animated.timing(bgColorAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  };
+
+  const backgroundColor = bgColorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      scheme === "dark" ? "#1E293B" : "#fff",
+      scheme === "dark" ? "#334155" : "#F3F4F6",
+    ],
+  });
+
   return (
-    <TouchableOpacity 
-      activeOpacity={0.85} 
-      onPress={onPress} 
+    <Animated.View
       style={[
         styles.container,
         {
-          backgroundColor: scheme === "dark" ? "#1E293B" : "#fff",
+          transform: [{ scale: scaleAnim }],
+          backgroundColor: backgroundColor,
           borderColor: scheme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-        }
+        },
       ]}
     >
+      <TouchableOpacity 
+        activeOpacity={1} 
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.touchableContent}
+      >
       {hasAISummary && (
         <View style={[styles.aiBackgroundEffect, { backgroundColor: scheme === "dark" ? "rgba(99, 102, 241, 0.1)" : "rgba(99, 102, 241, 0.05)" }]} />
       )}
@@ -183,7 +231,8 @@ export const EventCard = ({ event, onPress }: Props) => {
           </TouchableOpacity>
         )}
       </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -202,6 +251,10 @@ const styles = StyleSheet.create({
     elevation: 2,
     position: "relative",
     overflow: "hidden",
+  },
+  touchableContent: {
+    flex: 1,
+    flexDirection: "row",
   },
   aiBackgroundEffect: {
     position: "absolute",

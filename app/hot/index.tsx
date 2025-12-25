@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, memo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { useFocusEffect } from "expo-router";
@@ -10,6 +10,8 @@ import { fetchNoticesCleaned, type Notice } from "../../src/api/eventsFirestore"
 import { normalize } from "../../src/services/search";
 import { subscribe as subscribeFavorites, ensureUserId as ensureFavUser } from "../../src/services/favorites";
 import { enrichEventsWithTags } from "../../src/services/tags";
+import { PageTransition } from "../../src/components/PageTransition";
+import { usePageTransition } from "../../src/hooks/usePageTransition";
 
 // 태그별 색상 매핑 (검색 페이지와 동일)
 const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> = {
@@ -25,7 +27,8 @@ const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> 
   "대외활동": { bg: "#E0F2F1", text: "#00695C", border: "#80CBC4" },
 };
 
-export default function HotScreen() {
+const HotScreen = memo(() => {
+  const { isVisible, direction } = usePageTransition();
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -247,7 +250,8 @@ export default function HotScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}> 
+    <PageTransition isVisible={isVisible} direction={direction}>
+      <SafeAreaView style={styles.container} edges={["top", "left", "right"]}> 
       <View style={styles.content}>
         {loading ? (
           <View style={styles.loadingBox}>
@@ -340,8 +344,13 @@ export default function HotScreen() {
         )}
       </View>
     </SafeAreaView>
+    </PageTransition>
   );
-}
+});
+
+HotScreen.displayName = "HotScreen";
+
+export default HotScreen;
 
 const styles = StyleSheet.create({
   container: {

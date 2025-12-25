@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,8 +9,11 @@ import EventCard from "../../src/components/EventCard";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
 import { enrichEventsWithTags, ALLOWED_TAGS, TAG_COLORS } from "../../src/services/tags";
 import { searchByAllWords, normalize, extractHashtags, filterItemsByAllTags } from "../../src/services/search";
+import { PageTransition } from "../../src/components/PageTransition";
+import { usePageTransition } from "../../src/hooks/usePageTransition";
 
-export default function SearchScreen() {
+const SearchScreen = memo(() => {
+  const { isVisible, direction } = usePageTransition();
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; tag?: string }>();
   const scheme = useColorScheme();
@@ -148,7 +151,8 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <PageTransition isVisible={isVisible} direction={direction}>
+      <SafeAreaView style={styles.container}>
       {/* 검색 헤더 */}
       <View style={styles.header}>
         <View style={[styles.searchContainer, isHashtagMode && styles.searchContainerTagActive]}>
@@ -282,8 +286,13 @@ export default function SearchScreen() {
         )}
       </View>
     </SafeAreaView>
+    </PageTransition>
   );
-}
+});
+
+SearchScreen.displayName = "SearchScreen";
+
+export default SearchScreen;
 
 const styles = StyleSheet.create({
   container: {

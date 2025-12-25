@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, Dimensions } from "react-native";
+import { View, Text, Pressable, StyleSheet, useColorScheme, Dimensions, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 type FilterTag = "수강" | "학사" | "취업" | "공모전";
 
@@ -62,62 +67,168 @@ export default function WebQuickMenu() {
         const filterKey = filter as FilterTag;
         
         return (
-          <TouchableOpacity
+          <FilterTagItem
             key={filterKey}
-            style={[
-              styles.menuItem,
-              isSmallScreen && styles.menuItemSmall,
-              {
-                backgroundColor: isDark ? config.bgColor.dark : config.bgColor.light,
-              }
-            ]}
+            filter={filterKey}
+            config={config}
+            isDark={isDark}
+            isSmallScreen={isSmallScreen}
             onPress={() => handleFilterPress(filterKey)}
-            activeOpacity={0.8}
-          >
-            {isSmallScreen ? (
-              <>
-                <Ionicons
-                  name={config.icon}
-                  size={32}
-                  color={isDark ? config.iconColor.dark : config.iconColor.light}
-                />
-                <Text
-                  style={[
-                    styles.label,
-                    styles.labelSmall,
-                    {
-                      color: isDark ? config.iconColor.dark : config.iconColor.light,
-                      fontWeight: "700",
-                    }
-                  ]}
-                >
-                  {config.label}
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text
-                  style={[
-                    styles.label,
-                    {
-                      color: isDark ? config.iconColor.dark : config.iconColor.light,
-                      fontWeight: "700",
-                    }
-                  ]}
-                >
-                  {config.label}
-                </Text>
-                <Ionicons
-                  name={config.icon}
-                  size={32}
-                  color={isDark ? config.iconColor.dark : config.iconColor.light}
-                />
-              </>
-            )}
-          </TouchableOpacity>
+          />
         );
       })}
     </View>
+  );
+}
+
+// 필터 태그 아이템 컴포넌트 (호버 애니메이션 포함)
+const FilterTagItem = ({
+  filter,
+  config,
+  isDark,
+  isSmallScreen,
+  onPress,
+}: {
+  filter: FilterTag;
+  config: typeof FILTER_CONFIG[FilterTag];
+  isDark: boolean;
+  isSmallScreen: boolean;
+  onPress: () => void;
+}) => {
+  const scale = useSharedValue(1);
+  const rotation = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value },
+      { rotate: `${rotation.value}deg` },
+    ],
+  }));
+
+  // 웹 환경에서만 호버 효과 적용
+  if (Platform.OS === "web") {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.menuItem,
+          isSmallScreen && styles.menuItemSmall,
+          {
+            backgroundColor: isDark ? config.bgColor.dark : config.bgColor.light,
+          },
+        ]}
+        onHoverIn={() => {
+          scale.value = withTiming(1.1, { duration: 200 });
+          rotation.value = withTiming(5, { duration: 200 });
+        }}
+        onHoverOut={() => {
+          scale.value = withTiming(1, { duration: 200 });
+          rotation.value = withTiming(0, { duration: 200 });
+        }}
+      >
+        <Animated.View style={[
+          styles.menuItemContent,
+          isSmallScreen ? styles.menuItemContentSmall : styles.menuItemContentLarge,
+          animatedStyle
+        ]}>
+          {isSmallScreen ? (
+            <>
+              <Ionicons
+                name={config.icon}
+                size={32}
+                color={isDark ? config.iconColor.dark : config.iconColor.light}
+              />
+              <Text
+                style={[
+                  styles.label,
+                  styles.labelSmall,
+                  {
+                    color: isDark ? config.iconColor.dark : config.iconColor.light,
+                    fontWeight: "700",
+                  }
+                ]}
+              >
+                {config.label}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: isDark ? config.iconColor.dark : config.iconColor.light,
+                    fontWeight: "700",
+                  }
+                ]}
+              >
+                {config.label}
+              </Text>
+              <Ionicons
+                name={config.icon}
+                size={32}
+                color={isDark ? config.iconColor.dark : config.iconColor.light}
+              />
+            </>
+          )}
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
+  // 모바일 환경에서는 호버 효과 없이 기본 동작
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.menuItem,
+        isSmallScreen && styles.menuItemSmall,
+        {
+          backgroundColor: isDark ? config.bgColor.dark : config.bgColor.light,
+        },
+      ]}
+    >
+      {isSmallScreen ? (
+        <>
+          <Ionicons
+            name={config.icon}
+            size={32}
+            color={isDark ? config.iconColor.dark : config.iconColor.light}
+          />
+          <Text
+            style={[
+              styles.label,
+              styles.labelSmall,
+              {
+                color: isDark ? config.iconColor.dark : config.iconColor.light,
+                fontWeight: "700",
+              }
+            ]}
+          >
+            {config.label}
+          </Text>
+        </>
+      ) : (
+        <>
+          <Text
+            style={[
+              styles.label,
+              {
+                color: isDark ? config.iconColor.dark : config.iconColor.light,
+                fontWeight: "700",
+              }
+            ]}
+          >
+            {config.label}
+          </Text>
+          <Ionicons
+            name={config.icon}
+            size={32}
+            color={isDark ? config.iconColor.dark : config.iconColor.light}
+          />
+        </>
+      )}
+    </Pressable>
   );
 }
 
@@ -141,6 +252,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 16,
     minHeight: 100,
+    overflow: "hidden",
+  },
+  menuItemContent: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuItemContentSmall: {
+    flexDirection: "column",
+    gap: 8,
+  },
+  menuItemContentLarge: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   menuItemSmall: {
     flexDirection: "column",
