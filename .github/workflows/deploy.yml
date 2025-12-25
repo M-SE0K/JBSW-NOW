@@ -3,7 +3,7 @@ name: Deploy to JCloud Server
 on:
   push:
     branches:
-    # - main
+      # - main
       - develop
 
 jobs:
@@ -21,6 +21,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
+          command_timeout: 30m
           script: |
             echo "=========================================="
             echo "📁 Moving to project directory..."
@@ -31,61 +32,45 @@ jobs:
             echo "=========================================="
             echo "📥 Pulling latest code..."
             echo "=========================================="
-            # 로컬 변경사항 무시하고 강제로 최신 코드 가져오기
             git fetch origin develop
             git reset --hard origin/develop
             
             echo "✅ Git pull completed. Latest commit:"
             git log -1 --oneline
             
+            echo "=========================================="
+            echo "🧹 Cleaning up old resources..."
+            echo "=========================================="
+            # 기존 컨테이너 중지 및 삭제
+            sudo docker rm -f frontend-server || true
+            sudo docker rm -f proxy-server || true
+            
+            # 기존 이미지 삭제
+            sudo docker rmi my-frontend || true
+            sudo docker rmi my-proxy || true
+            
+            # 미사용 이미지/캐시 정리
+            sudo docker system prune -f
+            
             # ============================================
             # 1. Frontend Server 배포
             # ============================================
             echo "=========================================="
-            echo "🚀 Deploying Frontend Server..."
+            echo "🚀 Building Frontend Server..."
             echo "=========================================="
-            
-            # 기존 컨테이너 중지 및 삭제
-            sudo docker rm -f frontend-server || true
-            
-            # 기존 이미지도 삭제 (완전 새로 빌드)
-            sudo docker rmi my-frontend || true
-            
-            # 새 이미지 빌드 (캐시 없이)
-            echo "🔨 Building frontend image..."
             sudo docker build --no-cache -t my-frontend .
             
-            # 컨테이너 실행
             echo "▶️ Starting frontend container..."
             sudo docker run -d --net=host --name frontend-server my-frontend
-            
-            # 컨테이너 상태 확인
-            sleep 3
-            echo "📊 Frontend container status:"
-            sudo docker ps -a | grep frontend-server || true
-            
-            # 로그 확인 (최근 20줄)
-            echo "📜 Frontend container logs:"
-            sudo docker logs --tail 20 frontend-server || true
             
             # ============================================
             # 2. Proxy Server 배포
             # ============================================
             echo "=========================================="
-            echo "🚀 Deploying Proxy Server..."
+            echo "🚀 Building Proxy Server..."
             echo "=========================================="
+            sudo docker build --no-cache -f Dockerfile.proxy -t my-proxy .
             
-            # 기존 컨테이너 중지 및 삭제
-            sudo docker rm -f proxy-server || true
-            
-            # 기존 이미지도 삭제
-            sudo docker rmi my-proxy || true
-            
-            # 새 이미지 빌드
-            echo "🔨 Building proxy image..."
-            sudo docker build -f Dockerfile.proxy -t my-proxy .
-            
-            # 컨테이너 실행 (환경변수 포함)
             echo "▶️ Starting proxy container..."
             sudo docker run -d \
               --net=host \
@@ -95,24 +80,22 @@ jobs:
               --name proxy-server \
               my-proxy
             
-            # 컨테이너 상태 확인
-            sleep 3
-            echo "📊 Proxy container status:"
-            sudo docker ps -a | grep proxy-server || true
-            
-            # 로그 확인
-            echo "📜 Proxy container logs:"
-            sudo docker logs --tail 20 proxy-server || true
-            
             # ============================================
             # 3. 최종 확인
             # ============================================
             echo "=========================================="
-            echo "✅ Final Deployment Status"
+            echo "✅ Deployment Status"
             echo "=========================================="
+            sleep 3
             sudo docker ps
             
-            # 미사용 이미지 정리
-            sudo docker image prune -f
+            echo ""
+            echo "📜 Frontend logs:"
+            sudo docker logs --tail 10 frontend-server 2>&1 || true
             
-            echo "🎉 Deployment completed!"
+            echo ""
+            echo "📜 Proxy logs:"
+            sudo docker logs --tail 10 proxy-server 2>&1 || true
+            
+            echo ""
+            echo "🎉 Deployment completed successfully!"
