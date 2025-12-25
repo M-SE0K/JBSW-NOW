@@ -54,6 +54,20 @@ async function main() {
     console.warn('Failed to verify/install express deps:', e?.message || e);
   }
 
+  // 4-1) react-native-svg 의존성 보증 설치 (누락 시 추가)
+  try {
+    const pkgPath = path.join(projectRoot, 'package.json');
+    const pkgRaw = await fs.readFile(pkgPath, 'utf8');
+    const pkg = JSON.parse(pkgRaw);
+    const allDeps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+    const needReactNativeSvg = !allDeps['react-native-svg'];
+    if (needReactNativeSvg) {
+      run('npm install react-native-svg');
+    }
+  } catch (e) {
+    console.warn('Failed to verify/install react-native-svg:', e?.message || e);
+  }
+
   // 5) Watchman 설치 및 재인덱싱 (macOS)
   const isMac = process.platform === 'darwin';
   if (isMac) {
@@ -105,5 +119,4 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-
 

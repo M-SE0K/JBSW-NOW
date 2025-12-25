@@ -27,8 +27,7 @@ const QUICK_PROMPTS = [
 ];
 
 export default function ChatScreen() {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
+  const isDark = useColorScheme() === "dark";
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
@@ -126,13 +125,19 @@ export default function ChatScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? "#05070d" : "#f5f6fb" }]}>
+    <SafeAreaView 
+      edges={Platform.OS === "web" ? ["top", "left", "right"] : undefined}
+      style={[styles.safeArea, { backgroundColor: isDark ? "#05070d" : "#f5f6fb" }]}
+    >
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={16}
       >
-        <View style={styles.wrapper}>
+        <View style={[
+          styles.wrapper,
+          Platform.OS === "web" && { maxWidth: 800, width: "100%", alignSelf: "center" } as any
+        ]}>
           <Animated.View
             style={[
               styles.hero,
@@ -141,7 +146,7 @@ export default function ChatScreen() {
             ]}
           >
             <View style={styles.heroIcon}>
-              <Ionicons name="sparkles" size={20} color="#2563eb" />
+              <Ionicons name="chatbubble-ellipses" size={20} color="#6466E9" />
             </View>
             <Text style={[styles.heroTitle, { color: isDark ? "#f8fafc" : "#0f172a" }]}>
               JBSW 챗 어시스턴트
@@ -151,11 +156,11 @@ export default function ChatScreen() {
             </Text>
             <View style={styles.heroBadgeRow}>
               <View style={styles.heroBadge}>
-                <Ionicons name="newspaper-outline" size={14} color="#2563eb" />
+                <Ionicons name="newspaper-outline" size={14} color="#6466E9" />
                 <Text style={styles.heroBadgeText}>최근 공지</Text>
               </View>
               <View style={styles.heroBadge}>
-                <Ionicons name="search-outline" size={14} color="#2563eb" />
+                <Ionicons name="search-outline" size={14} color="#6466E9" />
                 <Text style={styles.heroBadgeText}>RAG 검색</Text>
               </View>
             </View>
@@ -182,9 +187,7 @@ export default function ChatScreen() {
                     isUser ? styles.messageUser : styles.messageBot,
                     {
                       backgroundColor: isUser
-                        ? isDark
-                          ? "#1d4ed8"
-                          : "#111827"
+                        ? "#6466E9"
                         : isDark
                         ? "#1f2937"
                         : "#ffffff",
@@ -268,7 +271,7 @@ export default function ChatScreen() {
                         },
                         code_inline: {
                           backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
-                          color: isDark ? "#60a5fa" : "#1e40af",
+                          color: isDark ? "#6466E9" : "#6466E9",
                           paddingHorizontal: 6,
                           paddingVertical: 2,
                           borderRadius: 4,
@@ -277,7 +280,7 @@ export default function ChatScreen() {
                         },
                         code_block: {
                           backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
-                          color: isDark ? "#60a5fa" : "#1e40af",
+                          color: isDark ? "#6466E9" : "#6466E9",
                           padding: 12,
                           borderRadius: 8,
                           marginVertical: 12,
@@ -285,7 +288,7 @@ export default function ChatScreen() {
                           fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
                         },
                         link: {
-                          color: "#2563eb",
+                          color: "#6466E9",
                           textDecorationLine: "none",
                           fontWeight: "500",
                         },
@@ -316,7 +319,7 @@ export default function ChatScreen() {
 
             {loading && (
               <View style={styles.loadingRow}>
-                <ActivityIndicator size="small" color="#2563eb" />
+                <ActivityIndicator size="small" color="#6466E9" />
                 <Text style={[styles.loadingText, { color: isDark ? "#cbd5f5" : "#475569" }]}>
                   답변을 찾고 있어요...
                 </Text>
@@ -344,7 +347,7 @@ export default function ChatScreen() {
                   ]}
                   onPress={() => send(prompt)}
                 >
-                  <Ionicons name="sparkles-outline" size={14} color="#2563eb" />
+                  <Ionicons name="chatbubble-ellipses-outline" size={14} color="#6466E9" />
                   <Text style={styles.promptChipText}>{prompt}</Text>
                 </Pressable>
               ))}
@@ -356,7 +359,11 @@ export default function ChatScreen() {
           style={[
             styles.composerWrapper,
             {
-              backgroundColor: isDark ? "#0f172a" : "#ffffff",
+              backgroundColor: "transparent",
+              marginBottom: Platform.OS === "web" ? 0 : -36,
+              paddingBottom: Platform.OS === "web" ? 16 : 12,
+              paddingTop: Platform.OS === "web" ? 8 : 12,
+              ...(Platform.OS === "web" ? { maxWidth: 800, width: "100%", alignSelf: "center" } : {} as any),
             },
             composerAnimatedStyle,
           ]}
@@ -366,7 +373,7 @@ export default function ChatScreen() {
               styles.composer,
               {
                 borderColor: isDark ? "#1e293b" : "#e2e8f0",
-                backgroundColor: isDark ? "#101828" : "#f8fafc",
+                backgroundColor: "#ffffff",
               },
             ]}
           >
@@ -388,14 +395,14 @@ export default function ChatScreen() {
                 {
                   backgroundColor:
                     loading || !input.trim()
-                      ? "rgba(37, 99, 235, 0.3)"
+                      ? "rgba(100, 102, 233, 0.3)"
                       : pressed
-                      ? "#1d4ed8"
-                      : "#2563eb",
+                      ? "#5557D9"
+                      : "#6466E9",
                 },
               ]}
             >
-              <Ionicons name="arrow-up" size={18} color="#fff" />
+              <Ionicons name="arrow-up" size={Platform.OS === "web" ? 16 : 18} color="#fff" />
             </Pressable>
           </View>
         </Animated.View>
@@ -421,13 +428,13 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "rgba(37, 99, 235, 0.08)",
+    borderColor: "rgba(100, 102, 233, 0.08)",
   },
   heroIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(37,99,235,0.1)",
+    backgroundColor: "rgba(100,102,233,0.1)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
@@ -450,13 +457,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(37,99,235,0.08)",
+    backgroundColor: "rgba(100,102,233,0.08)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
   },
   heroBadgeText: {
-    color: "#1d4ed8",
+    color: "#6466E9",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -509,7 +516,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   promptChipText: {
-    color: "#1d4ed8",
+    color: "#6466E9",
     fontSize: 13,
     fontWeight: "600",
   },
@@ -518,38 +525,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   composerWrapper: {
-    borderTopWidth: 1,
-    borderColor: "rgba(148,163,184,0.3)",
+    borderTopWidth: 0,
     paddingHorizontal: 20,
     paddingVertical: 8,
-    marginBottom: -36,
   },
   composer: {
     flexDirection: "row",
-    borderRadius: 16,
+    borderRadius: 28,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 3,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === "web" ? 6 : 8,
     alignItems: "center",
-    gap: 10,
-  },
+    gap: 12,
+  } as any,
   input: {
     flex: 1,
     fontSize: 15,
-    minHeight: 28,
-    maxHeight: 80,
-    paddingTop: 0,
-    paddingBottom: 0,
+    minHeight: Platform.OS === "web" ? 28 : 36,
+    maxHeight: 100,
+    paddingTop: Platform.OS === "web" ? 2 : 4,
+    paddingBottom: Platform.OS === "web" ? 2 : 4,
+    paddingHorizontal: 4,
     lineHeight: 20,
     textAlignVertical: "center",
-  },
+  } as any,
   sendButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
+    width: Platform.OS === "web" ? 32 : 36,
+    height: Platform.OS === "web" ? 32 : 36,
+    borderRadius: Platform.OS === "web" ? 16 : 18,
     alignItems: "center",
     justifyContent: "center",
-  },
+  } as any,
 });
-
-

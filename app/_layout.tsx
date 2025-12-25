@@ -1,15 +1,118 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Tabs } from "expo-router";
-import { useColorScheme } from "react-native";
+import { useColorScheme, View, StyleSheet, Dimensions, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { QueryProvider } from "../src/state/queryClient";
 import { setupNotificationHandler, startNoticesPolling, stopNoticesPolling, requestLocalNotificationPermission } from "../src/services/notifications";
 import { setupAppFocus } from "../src/state/queryClient";
-import { Ionicons } from "@expo/vector-icons";
-import { AppHeaderRight, AppHeaderTitle } from "../src/components/AppHeader";
-import CustomTabBar from "../src/components/CustomTabBar";
+import { AppHeaderLogo, AppHeaderNavigation, AppHeaderRight } from "../src/components/AppHeader";
 import ChatShortcutOverlay from "../src/components/ChatShortcutOverlay";
+import MobileTabBar from "../src/components/MobileTabBar";
+
+const HeaderComponent = () => {
+  const [dimensions, setDimensions] = useState(Dimensions.get("window"));
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const isDesktop = Platform.OS === "web" && dimensions.width >= 1024;
+  const isMobile = Platform.OS !== "web";
+
+  // 모바일에서는 로고와 오른쪽 아이콘들 표시
+  if (isMobile) {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === "dark";
+    return (
+      <View style={[
+        headerStyles.container, 
+        headerStyles.mobileHeader, 
+        { 
+          paddingHorizontal: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB",
+        }
+      ]}>
+        <AppHeaderLogo />
+        <AppHeaderRight />
+      </View>
+    );
+  }
+
+  // 웹에서는 전체 헤더 표시
+  return (
+    <View style={headerStyles.container}>
+      <View style={headerStyles.left}>
+        <AppHeaderLogo />
+      </View>
+      {isDesktop && (
+        <View style={headerStyles.center}>
+          <AppHeaderNavigation />
+        </View>
+      )}
+      <View style={headerStyles.right}>
+        <AppHeaderRight />
+      </View>
+    </View>
+  );
+};
+
+const CustomHeader = () => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const backgroundColor = isDark ? "#111827" : "#fff";
+
+  const headerContent = <HeaderComponent />;
+
+  // 웹에서는 SafeAreaView 불필요, 모바일에서는 SafeAreaView 사용
+  if (Platform.OS === "web") {
+    return (
+      <View style={{ backgroundColor }}>
+        {headerContent}
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView edges={["top"]} style={{ backgroundColor }}>
+      {headerContent}
+    </SafeAreaView>
+  );
+};
+
+const headerStyles = StyleSheet.create({
+  container: {
+    width: "100%",
+    paddingHorizontal: 24,
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  mobileHeader: {
+    justifyContent: "space-between",
+  },
+  left: {
+    flex: 1,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  right: {
+    flex: 1,
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+});
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -28,55 +131,43 @@ export default function RootLayout() {
       <SafeAreaProvider style={{ flex: 1 }}>
         <QueryProvider>
           <Tabs
+            tabBar={Platform.OS === "web" ? undefined : MobileTabBar}
             screenOptions={{
-              headerShown: true,
+              header: () => <CustomHeader />,
               tabBarActiveTintColor: colorScheme === "dark" ? "#fff" : "#111",
-              tabBarStyle: { backgroundColor: colorScheme === "dark" ? "#111" : "#fff" },
+              tabBarStyle: Platform.OS === "web" ? { display: "none" } : { 
+                display: "flex", 
+                backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB",
+                borderTopWidth: 0, 
+                elevation: 0,
+                shadowOpacity: 0,
+                paddingTop: 0,
+                paddingBottom: 0,
+                marginTop: 0,
+                marginBottom: 0,
+                height: 60,
+              },
+              tabBarBackground: () => <View style={{ backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB", flex: 1 }} />,
             }}
-            tabBar={(props) => <CustomTabBar {...props} />}
           >
-            {/* 헤더 영역 */}
             <Tabs.Screen
               name="index"
-              options={{
-                title: "",
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="home-outline" color={color} size={size} />
-                ),
-                headerTitle: () => (
-                  <AppHeaderTitle color={colorScheme === "dark" ? "#fff" : "#125"} />
-                ),
-                headerTitleAlign: "left",
-                headerRight: () => (
-                  <AppHeaderRight iconColor={colorScheme === "dark" ? "#fff" : "#111"} />
-                ),
-              }}
+              options={{}}
             />
 
-            {/* 즐겨찾기 */}
             <Tabs.Screen
               name="favorites/index"
               options={{
-                title: "",
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="bookmark-outline" color={color} size={size} />
-                ),
                 headerShown: false,
               }}
             />
 
-            {/* 인기 게시물 */}
             <Tabs.Screen
               name="hot/index"
               options={{
-                title: "",
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="flame-outline" color={color} size={size} />
-                ),
                 headerShown: false,
               }}
             />
-            {/* 탭은 3개만 노출: 나머지 라우트는 탭 바에서 숨김 */}
             <Tabs.Screen
               name="auth/login"
               options={{
@@ -139,7 +230,6 @@ export default function RootLayout() {
                 headerShown: false,
               }}
             />
-            {/* 테스트 라우트 */}
             <Tabs.Screen
               name="test/local-image"
               options={{
@@ -150,16 +240,8 @@ export default function RootLayout() {
             <Tabs.Screen name="test/firebase" options={{ href: null }} />
           </Tabs>
         </QueryProvider>
-        <ChatShortcutOverlay />
+        {Platform.OS === "web" && <ChatShortcutOverlay />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
-
-
-/* 헤더 타이틀 커스터마이즈를 위한 기본 스타일과 텍스트 상수 */
-const HEADER_TITLE_TEXT = "JBSW NOW";
-const HEADER_TITLE_BASE_STYLE = {
-  fontSize: 24,
-  fontWeight: "800" as const,
-};

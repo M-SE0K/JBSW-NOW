@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, Pressable, useColorScheme } from "react-native";
+import { StyleSheet, View, Pressable, useColorScheme, Platform } from "react-native";
 import { router, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,7 +10,14 @@ const ChatShortcutOverlay = () => {
   const isDark = colorScheme === "dark";
   const pathname = usePathname();
 
-  if (pathname?.startsWith("/chat")) {
+  // 웹에서만 표시 (모바일은 하단 탭바 사용)
+  // 로그인/회원가입 페이지에서는 표시하지 않음
+  if (
+    Platform.OS !== "web" || 
+    pathname?.startsWith("/chat") ||
+    pathname?.startsWith("/auth/login") ||
+    pathname?.startsWith("/auth/signup")
+  ) {
     return null;
   }
 
@@ -24,12 +31,12 @@ const ChatShortcutOverlay = () => {
           styles.fab,
           {
             bottom: insets.bottom + 32,
-            backgroundColor: isDark ? "#1f1f1f" : "#111111",
-            opacity: pressed ? 0.7 : 1,
+            backgroundColor: "#6466E9",
+            opacity: pressed ? 0.8 : 1,
           },
         ]}
       >
-        <Ionicons name="chatbubble-ellipses-outline" size={26} color="#ffffff" />
+        <Ionicons name="chatbubble-ellipses" size={24} color="#FFFFFF" />
       </Pressable>
     </View>
   );
@@ -42,16 +49,16 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: "#6466E9",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 8,
   },
 });
 

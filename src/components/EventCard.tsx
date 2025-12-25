@@ -1,10 +1,11 @@
 import React from "react";
-import { View, Text, useColorScheme, TouchableOpacity, Linking } from "react-native";
-import { isFavorite, toggleFavorite, subscribe, ensureUserId } from "../services/favorites";
+import { View, Text, useColorScheme, TouchableOpacity, Linking, Image, StyleSheet, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { isFavorite, subscribe, ensureUserId, toggleFavorite } from "../services/favorites";
 import { incrementHotClick } from "../services/hot";
 import { cleanCrawledText } from "../utils/textCleaner";
 import { Event } from "../types";
-import { formatDateTime } from "../utils/date";
+import { maybeProxyForWeb } from "../utils/imageProxy";
 
 type Props = {
   event: Event;
@@ -23,7 +24,6 @@ export const EventCard = ({ event, onPress }: Props) => {
     return unsub;
   }, [event.id]);
   
-  // event.hotClickCount가 변경되면 로컬 상태도 업데이트
   React.useEffect(() => {
     if (event.hotClickCount !== undefined) {
       setHotClickCount(event.hotClickCount);
@@ -40,22 +40,18 @@ export const EventCard = ({ event, onPress }: Props) => {
         console.warn("[UI] cannot open url", url);
         return;
       }
-      // 조회수 즉시 업데이트 (낙관적 업데이트 - 권한 오류와 관계없이 UI에 표시)
       setHotClickCount((prev) => (prev ?? 0) + 1);
-      
-      // 인기글 카운트 증가 (실패해도 URL 열기는 계속 진행)
       try {
         await incrementHotClick({ key: event.id, title: String(event.title || ""), sourceUrl: event.sourceUrl || null, posterImageUrl: event.posterImageUrl || null });
       } catch (hotError) {
         console.warn("[UI] incrementHotClick error (non-blocking)", hotError);
-        // 권한 오류가 발생해도 UI에는 이미 조회수가 표시됨
       }
       await Linking.openURL(url);
     } catch (e) {
       console.warn("[UI] openURL error", e);
     }
   };
-  // 타이틀 가공: JSON 규칙으로 생성된 제목이 없을 경우, 간단 정제
+
   const displayTitle = typeof event.title === "string" ? cleanCrawledText(event.title, { maxLength: 80 }) : event.title;
   const displaySummary = (() => {
     const fromSummary = typeof event.summary === "string" ? event.summary : null;
@@ -64,85 +60,263 @@ export const EventCard = ({ event, onPress }: Props) => {
     return text ? cleanCrawledText(text, { maxLength: 300 }) : null;
   })();
 
+  const hasAISummary = !!(event.ai?.summary);
+  const imageUrl = event.posterImageUrl ? maybeProxyForWeb(event.posterImageUrl) : null;
+  const dateStr = event.startAt ? new Date(event.startAt).toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }) : "";
+  
+  const orgName = event.org?.name || "";
+  const univTag = orgName.includes("전북") ? "전북대" : 
+                  orgName.includes("군산") ? "군산대" : 
+                  orgName.includes("원광") ? "원광대" : null;
+  
+  const hasHotTag = event.tags?.some(t => t.toLowerCase().includes("hot") || t.includes("HOT")) || (hotClickCount && hotClickCount > 10);
+  const otherTags = event.tags?.filter(t => !t.toLowerCase().includes("hot")) || [];
+
   return (
-    <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={{
-      backgroundColor: scheme === "dark" ? "#1c1c1c" : "#fff",
-      borderRadius: 12,
-      padding: 16,
-      marginHorizontal: 16,
-      marginVertical: 8,
-      shadowColor: "#000",
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
-    }}>
-      <Text style={{ fontSize: 16, fontWeight: "700", color: scheme === "dark" ? "#fff" : "#111" }}>{displayTitle}</Text>
-      {displaySummary ? (
-        <Text numberOfLines={3} style={{ marginTop: 8, color: scheme === "dark" ? "#ddd" : "#444" }}>{displaySummary}</Text>
-      ) : null}
-
-      <View style={{ marginTop: 10 }}>
-        <Text style={{ color: scheme === "dark" ? "#bbb" : "#666" }}>
-          {formatDateTime(event.startAt)}{event.endAt ? ` ~ ${formatDateTime(event.endAt)}` : ""}
-        </Text>
-        {event.location ? (
-          <Text style={{ color: scheme === "dark" ? "#bbb" : "#666", marginTop: 2 }}>{event.location}</Text>
-        ) : null}
-      </View>
-
-      {!!event.tags?.length && (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 8 }}>
-          {event.tags!.map((t) => (
-            <View key={t} style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: scheme === "dark" ? "#2a2a2a" : "#f1f1f1", borderRadius: 999, marginRight: 6, marginBottom: 6 }}>
-              <Text style={{ fontSize: 12, color: scheme === "dark" ? "#ddd" : "#333" }}>#{t}</Text>
-            </View>
-          ))}
-        </View>
+    <TouchableOpacity 
+      activeOpacity={0.85} 
+      onPress={onPress} 
+      style={[
+        styles.container,
+        {
+          backgroundColor: scheme === "dark" ? "#1E293B" : "#fff",
+          borderColor: scheme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
+        }
+      ]}
+    >
+      {hasAISummary && (
+        <View style={[styles.aiBackgroundEffect, { backgroundColor: scheme === "dark" ? "rgba(99, 102, 241, 0.1)" : "rgba(99, 102, 241, 0.05)" }]} />
       )}
 
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, flexWrap: "wrap" }}>
-          <Text style={{ color: scheme === "dark" ? "#aaa" : "#666", fontSize: 13 }}>{event.org?.name}</Text>
-          {hotClickCount != null && hotClickCount > 0 ? (
-            <View style={{ 
-              marginLeft: 10, 
-              flexDirection: "row", 
-              alignItems: "center",
-              backgroundColor: scheme === "dark" ? "rgba(255, 107, 107, 0.15)" : "rgba(255, 107, 107, 0.1)",
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 12,
-            }}>
-              <Text style={{ fontSize: 13, marginRight: 4 }}>🔥</Text>
-              <Text style={{ 
-                fontSize: 12, 
-                color: scheme === "dark" ? "#ff6b6b" : "#e63946", 
-                fontWeight: "700",
-                letterSpacing: 0.3,
-              }}>
-                {hotClickCount.toLocaleString()}
+      <View style={styles.imageContainer}>
+        {imageUrl ? (
+          <Image 
+            source={{ uri: imageUrl as string }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.imagePlaceholder, { backgroundColor: scheme === "dark" ? "#334155" : "#E2E8F0" }]}>
+            <Text style={[styles.imagePlaceholderText, { color: scheme === "dark" ? "#64748B" : "#94A3B8" }]}>No Image</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.content}>
+        <View style={styles.tagsRow}>
+          {univTag && (
+            <View style={[
+              styles.univTag,
+              {
+                backgroundColor: univTag === "전북대" ? "#DBEAFE" : 
+                                 univTag === "군산대" ? "#FEF3C7" : "#D1FAE5",
+              }
+            ]}>
+              <Text style={[
+                styles.univTagText,
+                {
+                  color: univTag === "전북대" ? "#1E40AF" : 
+                         univTag === "군산대" ? "#854D0E" : "#166534",
+                }
+              ]}>
+                {univTag}
               </Text>
             </View>
-          ) : null}
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          {event.sourceUrl ? (
-            <TouchableOpacity onPress={openSource} style={{ marginRight: 14 }}>
-              <Text style={{ color: "#2f80ed", fontWeight: "600", fontSize: 13 }}>원문 보기</Text>
+          )}
+          {hasHotTag && (
+            <View style={[styles.tag, { backgroundColor: scheme === "dark" ? "rgba(239, 68, 68, 0.2)" : "#FEE2E2" }]}>
+              <Text style={[styles.tagText, { color: scheme === "dark" ? "#FCA5A5" : "#DC2626" }]}>HOT</Text>
+            </View>
+          )}
+          {otherTags.slice(0, 1).map((tag) => (
+            <View key={tag} style={[styles.tag, { backgroundColor: scheme === "dark" ? "#334155" : "#F1F5F9" }]}>
+              <Text style={[styles.tagText, { color: scheme === "dark" ? "#CBD5E1" : "#475569" }]}>{tag}</Text>
+            </View>
+          ))}
+          {hasAISummary && (
+            <View style={[styles.aiTag, { backgroundColor: scheme === "dark" ? "rgba(139, 92, 246, 0.2)" : "#EDE9FE" }]}>
+              <Ionicons name="sparkles" size={10} color={scheme === "dark" ? "#A78BFA" : "#7C3AED"} />
+              <Text style={[styles.aiTagText, { color: scheme === "dark" ? "#A78BFA" : "#7C3AED" }]}>Gemini 요약</Text>
+            </View>
+          )}
+          <View style={styles.rightActions}>
+            {dateStr && (
+              <Text style={[styles.date, { color: scheme === "dark" ? "#94A3B8" : "#9CA3AF" }]}>{dateStr}</Text>
+            )}
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                toggleFavorite(event.id);
+              }}
+              style={styles.favoriteButton}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={fav ? "heart" : "heart-outline"}
+                size={18}
+                color={fav ? "#EF4444" : (scheme === "dark" ? "#94A3B8" : "#9CA3AF")}
+              />
             </TouchableOpacity>
-          ) : null}
-          <TouchableOpacity onPress={async () => { console.log("[FAV] press toggle", { id: event.id }); await toggleFavorite(event.id); }}>
-            <Text style={{ color: fav ? "#e11d48" : (scheme === "dark" ? "#aaa" : "#666"), fontWeight: "700", fontSize: 18 }}>
-              {fav ? "♥" : "♡"}
-            </Text>
-          </TouchableOpacity>
+          </View>
         </View>
+
+        <Text style={[styles.title, { color: scheme === "dark" ? "#F1F5F9" : "#111827" }]} numberOfLines={1}>
+          {displayTitle}
+        </Text>
+
+        {displaySummary && (
+          <Text style={[styles.summary, { color: scheme === "dark" ? "#94A3B8" : "#4B5563" }]} numberOfLines={2}>
+            {displaySummary}
+          </Text>
+        )}
+
+        {event.sourceUrl && (
+          <TouchableOpacity 
+            onPress={openSource}
+            style={styles.readMoreButton}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.readMoreText, { color: scheme === "dark" ? "#94A3B8" : "#6B7280" }]}>
+              원문 보기
+            </Text>
+            <Ionicons name="open-outline" size={12} color={scheme === "dark" ? "#94A3B8" : "#6B7280"} />
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
 };
 
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    padding: 16,
+    marginHorizontal: 0,
+    marginVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    position: "relative",
+    overflow: "hidden",
+  },
+  aiBackgroundEffect: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 96,
+    height: 96,
+  },
+  imageContainer: {
+    width: 120,
+    height: 96,
+    borderRadius: 10,
+    overflow: "hidden",
+    flexShrink: 0,
+    marginRight: 16,
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imagePlaceholderText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  content: {
+    flex: 1,
+    justifyContent: "space-between",
+    position: "relative",
+    zIndex: 10,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    marginBottom: 8,
+  },
+  univTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  univTagText: {
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+  tagText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  aiTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "rgba(124, 58, 237, 0.2)",
+  },
+  aiTagText: {
+    fontSize: 10,
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+  rightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: "auto",
+  },
+  date: {
+    fontSize: 12,
+  },
+  favoriteButton: {
+    padding: 4,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 22,
+    marginBottom: 6,
+  },
+  summary: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  readMoreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+  },
+  readMoreText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginRight: 4,
+  },
+});
+
 export default EventCard;
-
-

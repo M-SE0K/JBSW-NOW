@@ -1,29 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, useColorScheme } from "react-native";
+import { View, useColorScheme, Text, StyleSheet, Platform, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
-import SectionHeader from "../SectionHeader";
-import BannerSlider from "../BannerSlider";
-import { useEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import HotBannerSlider from "../HotBannerSlider";
+import QuickMenuGrid from "../QuickMenuGrid";
+import WebQuickMenu from "../WebQuickMenu";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import { enrichEventsWithTags, classifyEventTags } from "../../services/tags";
 import EventsList from "../EventsList";
+import EventCard from "../EventCard";
+
+const isWeb = Platform.OS === "web";
 
 export default function Home() {
   const colorScheme = useColorScheme();
   const placeholder = colorScheme === "dark" ? "#2B2F33" : "#E4EAEE";
   const textColor = colorScheme === "dark" ? "#fff" : "#111";
-  const subText = colorScheme === "dark" ? "#C8CDD2" : "#6B7280";
   const router = useRouter();
   const [news, setNews] = useState<any[]>([]);
-  const [newsLimit, setNewsLimit] = useState<number>(200);
-  const [noticeLimit, setNoticeLimit] = useState<number>(3);
+  const [newsLimit] = useState<number>(200);
+  const [noticeLimit] = useState<number>(3);
   const [favTick, setFavTick] = useState<number>(0);
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get("window").width);
 
-  const handleMorePress = () => {
-    router.push("/events");
-  };
+  // 화면 크기 변경 감지
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -34,25 +42,6 @@ export default function Home() {
           fetchNoticesCleaned(noticeLimit),
         ]);
 
-        console.log("[UI] Home:fetch done", {
-          eventsCount: Array.isArray(eventsDataRaw) ? eventsDataRaw.length : 0,
-          noticesCount: Array.isArray(notices) ? notices.length : 0,
-        });
-        // notices: Title과 date만 로그 출력
-        if (Array.isArray(notices)) {
-          const preview = notices.map((n: any) => ({
-            title: typeof n.title === "string" ? n.title.slice(0, 80) : n.title,
-            date: n.date ?? n.crawled_at ?? n.firebase_created_at ?? null,
-          }));
-          console.log("[UI] Home:notices (title, date)", preview);
-        }
-        ;(notices || []).slice(0, 20).forEach((n: any, i: number) => {
-          // console.log("[UI] Home:notice sample", i, {
-          //   id: n.id,
-          //   title: typeof n.title === "string" ? n.title.slice(0, 120) : n.title,
-          //   url: n.url || null,
-          // });
-        });
 
         // Notice를 Event 형태로 매핑하며 Gemini 기반 태그 라벨링 적용
         const noticeAsEvents = await Promise.all((notices || []).map(async (n: any) => {
@@ -82,17 +71,7 @@ export default function Home() {
         // 이벤트 태그 정제/보강
         const eventsData = await enrichEventsWithTags(Array.isArray(eventsDataRaw) ? eventsDataRaw : [] as any);
 
-        // 공지 3건 + 태그 정제된 이벤트를 묶어서 렌더링
         const merged = [...noticeAsEvents, ...eventsData];
-        console.log("[UI] Home:merged feed size", merged.length);
-        // 현재 피드 표시 순서 로그: Title과 date만
-        console.log(
-          "[UI] Home:feed (title, date)",
-          merged.map((it: any) => ({
-            title: typeof it.title === "string" ? it.title.slice(0, 80) : it.title,
-            date: it.startAt || null,
-          }))
-        );
         setNews(merged);
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
@@ -113,13 +92,10 @@ export default function Home() {
     return () => unsub();
   }, []);
 
-  // 다양한 날짜 문자열(예: 2025.07.30, 2025. 7. 28.(월), ISO 등)을 ISO로 정규화
   function deriveIsoDate(input?: string | null): string {
     if (!input || typeof input !== "string") return new Date().toISOString();
     const s = input.trim();
-    // 이미 ISO인 경우
     if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s).toISOString();
-    // 2025.07.30 또는 2025. 7. 30. (월) 형태를 포착
     const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
     if (m) {
       const y = Number(m[1]);
@@ -128,58 +104,175 @@ export default function Home() {
       const dt = new Date(Date.UTC(y, Math.max(0, mo - 1), d, 0, 0, 0));
       return dt.toISOString();
     }
-    // 그 외 문자열은 Date 파서에 위임(실패 시 현재 시각)
     const parsed = new Date(s);
     if (!isNaN(parsed.getTime())) return parsed.toISOString();
     return new Date().toISOString();
   }
 
-  function toDateMsFromString(s?: string | null): number {
-    if (!s || typeof s !== "string") return 0;
-    const m = s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
-    if (m) {
-      const y = Number(m[1]);
-      const mo = Number(m[2]);
-      const d = Number(m[3]);
-      const dt = new Date(y, Math.max(0, mo - 1), d, 0, 0, 0);
-      return dt.getTime();
-    }
-    const t = Date.parse(s);
-    return Number.isNaN(t) ? 0 : t;
+  // 전체화면일 때는 패딩 0, 작은 화면일 때는 패딩 추가
+  const headerPadding = isWeb && screenWidth >= 1400 ? 0 : (isWeb ? 24 : 8);
+
+  const topHeaderComponent = (
+    <View style={{ alignSelf: "stretch", marginHorizontal: -16, paddingTop: 16, backgroundColor: colorScheme === "dark" ? "#1E293B" : "#F5F5F5" }}>
+      <View style={[styles.headerWrapper, { paddingHorizontal: headerPadding }]}>
+        <HotBannerSlider />
+        {!isWeb && (
+          <View style={{ paddingHorizontal: 0, marginBottom: 16 }}>
+            <QuickMenuGrid 
+              selectedFilter={null}
+              onFilterSelect={(filter) => {
+                if (filter) {
+                  router.push(`/events?tag=${filter}`);
+                }
+              }}
+            />
+          </View>
+        )}
+        {isWeb && (
+          <View style={{ marginTop: 24, marginBottom: 8 }}>
+            <WebQuickMenu />
+          </View>
+        )}
+      </View>
+    </View>
+  );
+
+  const newsSectionHeader = (
+    <View style={styles.newsSectionContainer}>
+      <View style={styles.feedHeader}>
+        <View style={styles.feedTitleRow}>
+          <Text style={[styles.feedTitle, { color: textColor }]}>
+            최근 소식
+          </Text>
+          <TouchableOpacity 
+            onPress={() => router.push("/events")}
+            style={styles.moreButton}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.moreButtonText, { color: textColor }]}>
+              더 보기
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={textColor} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (isWeb) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB" }} edges={["left", "right", "bottom"]}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          {topHeaderComponent}
+          <View style={styles.contentWrapper}>
+            <View style={styles.mainContent}>
+              <View style={[styles.feedContainer, { backgroundColor: colorScheme === "dark" ? "#1E293B" : "#FFFFFF", borderRadius: 12, padding: 16 }]}>
+                {newsSectionHeader}
+                {news.length === 0 ? (
+                  <View style={[styles.emptyState, { backgroundColor: placeholder }]}>
+                    <Text style={{ color: "#888" }}>최근 소식이 없습니다.</Text>
+                  </View>
+                ) : (
+                  news.map((item) => (
+                    <EventCard 
+                      key={item.id}
+                      event={item} 
+                      onPress={() => {
+                        // TODO: 상세 라우팅 연결
+                      }}
+                    />
+                  ))
+                )}
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["left", "right", "bottom"]}>
-      <EventsList
-        events={news as any}
-        placeholderColor={placeholder}
-        extraData={favTick}
+    <SafeAreaView style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F5F5F5" }} edges={["left", "right"]}>
+      <View style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#1E293B" : "#FFFFFF" }}>
+        <EventsList
+          events={news}
+          placeholderColor={placeholder}
+          extraData={favTick}
         ListHeaderComponent={
-          <View>
-            {/* 상단 배너 영역 */}
-            <View style={{ marginTop: 12, borderRadius: 14, overflow: "hidden" }}>
-              <BannerSlider
-                imageUrls={[
-                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1756799978_8_uk3XLIRb1eoAs5mFiqZR_C5FQz5bs8WzFzk5iYy68b6a3ea.jpg",
-                  "https://swuniv.jbnu.ac.kr/_data/sys_program_list/1753667195_ZPaSl1QTX9Dcu5Q7PpBj6Di9VFUFNjbRQw3HNxs8j6886d67b.jpg",
-                  "https://img2.stibee.com/104257_3015028_1758707911021760055.png",
-                  "https://csai.jbnu.ac.kr/CrossEditor/binary/images/000858/20250926092439830_MFYZGK2M.png",
-                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1756961870_z2DhygbkGkgi4_DhICuEXjBXX6NJt3r3oZj8YfFhb68b91c4e.jpg",
-                  "https://sw.kunsan.ac.kr/_data/sys_program_list/1758521361_Pgm2cRhLVDaidx81VpefRHzFE8_VIZK6W2eKuxu2m68d0e811.png",
-                ]}
-              />
-            </View>
-            {/* 페이지네이션 점 영역은 BannerSlider 내부로 이동 */}
-            <SectionHeader title="새로운 소식" onPressMore={handleMorePress} />
+          <View style={{ width: "100%" }}>
+            {topHeaderComponent}
+            {newsSectionHeader}
           </View>
         }
-        onPressItem={(ev: any) => {
-          // TODO: 상세 라우팅 연결
-          //console.log("[UI] news press", ev.id);
-        }}
-      />
+          ListFooterComponent={null}
+          style={{ backgroundColor: "transparent" }}
+          onPressItem={(ev: any) => {
+            // TODO: 상세 라우팅 연결
+          }}
+        />
+      </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  headerWrapper: {
+    maxWidth: 1400,
+    alignSelf: "center",
+    width: "100%",
+  },
+  newsSectionContainer: {
+    backgroundColor: "transparent",
+  },
+  feedHeader: {
+    paddingTop: 16,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+  },
+  feedTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+  },
+  feedTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginRight: 8,
+  },
+  moreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  moreButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  contentWrapper: {
+    width: "100%",
+    paddingHorizontal: 24,
+  },
+  mainContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    maxWidth: 1400,
+    alignSelf: "center",
+    width: "100%",
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  feedContainer: {
+    flex: 1,
+    minWidth: 0,
+  },
+  emptyState: {
+    height: 120,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 8,
+  },
+});
 
 
