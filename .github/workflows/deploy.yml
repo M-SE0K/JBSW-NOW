@@ -1,0 +1,71 @@
+name: Deploy to Cloud Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            # 프로젝트 디렉토리로 이동 (실제 경로로 수정 필요)
+            cd ${{ secrets.PROJECT_PATH }}
+            
+            # 최신 코드 가져오기
+            git pull origin main
+            
+            # ============================================
+            # 1. Frontend Server 배포
+            # ============================================
+            echo "🚀 Deploying Frontend Server..."
+            
+            # 기존 컨테이너 중지 및 삭제
+            sudo docker rm -f frontend-server || true
+            
+            # 새 이미지 빌드 (캐시 없이)
+            sudo docker build --no-cache -t my-frontend .
+            
+            # 컨테이너 실행
+            sudo docker run -d --net=host --name frontend-server my-frontend
+            
+            # ============================================
+            # 2. Proxy Server 배포
+            # ============================================
+            echo "🚀 Deploying Proxy Server..."
+            
+            # 기존 컨테이너 중지 및 삭제
+            sudo docker rm -f proxy-server || true
+            
+            # 새 이미지 빌드
+            sudo docker build -f Dockerfile.proxy -t my-proxy .
+            
+            # 컨테이너 실행 (환경변수 포함)
+            sudo docker run -d \
+              --net=host \
+              -e PORT=8080 \
+              -e OLLAMA_URL=${{ secrets.OLLAMA_URL }} \
+              -e OLLAMA_ORIGINS="*" \
+              --name proxy-server \
+              my-proxy
+            
+            # ============================================
+            # 3. 배포 확인
+            # ============================================
+            echo "✅ Deployment Status:"
+            sudo docker ps | grep -E "frontend-server|proxy-server"
+            
+            # 미사용 이미지 정리
+            sudo docker image prune -f
