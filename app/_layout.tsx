@@ -152,6 +152,8 @@ export default function RootLayout() {
                 height: 60,
               },
               tabBarBackground: () => <View style={{ backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB", flex: 1 }} />,
+              // 페이지 전환 애니메이션 설정
+              animation: "fade",
             }}
           >
             <Tabs.Screen

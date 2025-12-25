@@ -9,8 +9,11 @@ import { enrichEventsWithTags, TAG_COLORS } from "../../src/services/tags";
 import { searchByAllWords, normalize, extractHashtags, filterItemsByAllTags } from "../../src/services/search";
 import { useLocalSearchParams } from "expo-router";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
+import { PageTransition } from "../../src/components/PageTransition";
+import { usePageTransition } from "../../src/hooks/usePageTransition";
 
 export default function EventsScreen() {
+  const { isVisible, isLoading, direction } = usePageTransition();
   const params = useLocalSearchParams<{ tag?: string }>();
   const scheme = useColorScheme();
   const [searchQuery, setSearchQuery] = useState("");
@@ -168,7 +171,8 @@ export default function EventsScreen() {
   }, [searchQuery]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "left", "right"]}>
+    <PageTransition isVisible={isVisible} showLoading={isLoading} direction={direction}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "left", "right"]}>
       {/* 검색 헤더 */}
       <View style={styles.header}>
         <View style={[styles.searchContainer, isHashtagMode && styles.searchContainerTagActive]}>
@@ -293,6 +297,7 @@ export default function EventsScreen() {
         )}
       </View>
     </SafeAreaView>
+    </PageTransition>
   );
 }
 
