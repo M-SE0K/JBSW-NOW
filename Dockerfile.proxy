@@ -1,0 +1,20 @@
+# Dockerfile.proxy 내용
+FROM node:20-alpine
+
+WORKDIR /app
+
+# 루트의 패키지 파일 복사
+COPY package*.json ./
+
+# 의존성 설치
+RUN npm install
+
+# 소스 코드 전체 복사
+COPY . .
+
+# 프록시 서버 포트 (보통 3000, 4000, 8080 중 하나일 텐데, 
+# 이전에 로그에서 localhost:4000/proxy 라고 떴으니 4000으로 추정)
+EXPOSE 4000
+
+# 실행 명령어 (환경 변수는 실행할 때 넣음)
+CMD ["npm", "run", "proxy"]
