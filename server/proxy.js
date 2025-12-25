@@ -1,9 +1,10 @@
 const express = require("express");
 
 const app = express();
-const PORT = process.env.PORT || 8080;
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-const MAX_CONCURRENT_REQUESTS = parseInt(process.env.MAX_CONCURRENT_REQUESTS || "10", 10);
+// 환경변수 값의 앞뒤 공백을 제거하고, URL 끝의 슬래시를 제거하여 안전하게 처리
+const PORT = (process.env.PORT || "8080").toString().trim();
+const OLLAMA_URL = (process.env.OLLAMA_URL || "http://localhost:11434").toString().trim().replace(/\/$/, "");
+const MAX_CONCURRENT_REQUESTS = parseInt((process.env.MAX_CONCURRENT_REQUESTS || "10").toString().trim(), 10);
 
 // 동시 요청 제한 관리
 let activeRequests = 0;
