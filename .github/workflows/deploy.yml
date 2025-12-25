@@ -22,8 +22,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            set -e  # 에러 발생 시 즉시 중단
-            
             echo "=========================================="
             echo "📁 Moving to project directory..."
             echo "=========================================="
@@ -34,8 +32,8 @@ jobs:
             echo "📥 Pulling latest code..."
             echo "=========================================="
             # 로컬 변경사항 무시하고 강제로 최신 코드 가져오기
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch origin develop
+            git reset --hard origin/develop
             
             echo "✅ Git pull completed. Latest commit:"
             git log -1 --oneline
