@@ -22,11 +22,18 @@ const useScreenInfo = () => {
 };
 
 export function AppHeaderLogo() {
+  const router = useRouter();
   const screenInfo = useScreenInfo();
   const showText = !screenInfo.isMobile; // 모바일이 아닐 때만 텍스트 표시
 
-  return (
-    <View style={styles.logoContainer}>
+  const handleLogoPress = () => {
+    if (Platform.OS === "web") {
+      router.push("/");
+    }
+  };
+
+  const logoContent = (
+    <>
       <View style={styles.logoBox}>
         <Text style={styles.logoLetter}>J</Text>
       </View>
@@ -36,6 +43,26 @@ export function AppHeaderLogo() {
           <Text style={styles.logoTextNOW}>NOW</Text>
         </View>
       )}
+    </>
+  );
+
+  // 웹에서는 클릭 가능하게
+  if (Platform.OS === "web") {
+    return (
+      <Pressable 
+        style={[styles.logoContainer, { cursor: "pointer" } as any]} 
+        onPress={handleLogoPress}
+        accessibilityRole="link"
+        accessibilityLabel="홈으로 이동"
+      >
+        {logoContent}
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={styles.logoContainer}>
+      {logoContent}
     </View>
   );
 }
