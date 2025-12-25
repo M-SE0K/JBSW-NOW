@@ -52,7 +52,6 @@ export async function ensureUserId(): Promise<string> {
   if (!uid) {
     uid = generateUuid();
     await storage.setItem(KEY_ACTIVE_USER, uid);
-    console.log("[FAV] create guest userId", uid);
   }
   activeUserId = uid;
   await hydrateFavorites();
@@ -64,7 +63,6 @@ export function getActiveUserIdSync(): string | null {
 }
 
 export async function switchUser(userId: string): Promise<void> {
-  console.log("[FAV] switchUser", userId);
   activeUserId = userId;
   await storage.setItem(KEY_ACTIVE_USER, userId);
   await hydrateFavorites();
@@ -114,11 +112,8 @@ export async function hydrateFavorites(): Promise<void> {
         }
       }
     } catch (e) {
-      console.warn("[FAV] firestore sync error", e);
-    }
-}
-
-  console.log("[FAV] hydrate completed", { userId: uid, count: inMemoryFavorites.size });
+      }
+  }
 }
 
 export async function persistFavorites(skipCloud: boolean = false): Promise<void> {
@@ -129,14 +124,12 @@ export async function persistFavorites(skipCloud: boolean = false): Promise<void
   
   // 1. 로컬 저장
   await storage.setItem(key, JSON.stringify(arr));
-  console.log("[FAV] persist local", { userId: uid, count: arr.length });
 
   // 2. 클라우드 저장 (로그인 유저인 경우)
   if (!skipCloud && auth.currentUser && auth.currentUser.uid === uid) {
     try {
       const userDocRef = doc(db, "users", uid);
       await setDoc(userDocRef, { favorites: arr }, { merge: true });
-      console.log("[FAV] persist cloud success");
     } catch (e) {
       console.error("[FAV] persist cloud error", e);
     }
@@ -182,7 +175,6 @@ export async function clearFavorites(): Promise<void> {
   }
   
   notify();
-  console.log("[FAV] cleared all favorites", { userId: uid });
 }
 
 function generateUuid(): string {
