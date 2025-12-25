@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, memo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { useFocusEffect } from "expo-router";
@@ -27,8 +27,8 @@ const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> 
   "대외활동": { bg: "#E0F2F1", text: "#00695C", border: "#80CBC4" },
 };
 
-export default function HotScreen() {
-  const { isVisible, isLoading, direction } = usePageTransition();
+const HotScreen = memo(() => {
+  const { isVisible, direction } = usePageTransition();
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -250,7 +250,7 @@ export default function HotScreen() {
   );
 
   return (
-    <PageTransition isVisible={isVisible} showLoading={isLoading} direction={direction}>
+    <PageTransition isVisible={isVisible} direction={direction}>
       <SafeAreaView style={styles.container} edges={["top", "left", "right"]}> 
       <View style={styles.content}>
         {loading ? (
@@ -346,7 +346,11 @@ export default function HotScreen() {
     </SafeAreaView>
     </PageTransition>
   );
-}
+});
+
+HotScreen.displayName = "HotScreen";
+
+export default HotScreen;
 
 const styles = StyleSheet.create({
   container: {

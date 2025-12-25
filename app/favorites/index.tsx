@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, memo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, ActivityIndicator } from "react-native";
 import EventsList from "../../src/components/EventsList";
@@ -9,8 +9,8 @@ import { enrichEventsWithTags } from "../../src/services/tags";
 import { PageTransition } from "../../src/components/PageTransition";
 import { usePageTransition } from "../../src/hooks/usePageTransition";
 
-export default function FavoritesScreen() {
-  const { isVisible, isLoading, direction } = usePageTransition();
+const FavoritesScreen = memo(() => {
+  const { isVisible, direction } = usePageTransition();
   const [allItems, setAllItems] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -87,7 +87,7 @@ export default function FavoritesScreen() {
   };
 
   return (
-    <PageTransition isVisible={isVisible} showLoading={isLoading} direction={direction}>
+    <PageTransition isVisible={isVisible} direction={direction}>
       <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "left", "right"]}>
       <View style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
@@ -114,6 +114,10 @@ export default function FavoritesScreen() {
     </SafeAreaView>
     </PageTransition>
   );
-}
+});
+
+FavoritesScreen.displayName = "FavoritesScreen";
+
+export default FavoritesScreen;
 
 

@@ -1,33 +1,38 @@
-import React, { useEffect } from "react";
-import { View, StyleSheet, useColorScheme, Dimensions } from "react-native";
+import React, { useEffect, useMemo, memo } from "react";
+import { StyleSheet, Dimensions } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   Easing,
+  cancelAnimation,
 } from "react-native-reanimated";
-import { ActivityIndicator } from "react-native";
 
 type PageTransitionProps = {
   children: React.ReactNode;
   isVisible: boolean;
-  showLoading?: boolean;
   direction?: "left" | "right";
 };
 
-export const PageTransition = ({ 
+export const PageTransition = memo(({ 
   children, 
   isVisible, 
-  showLoading = false,
   direction = "right" 
 }: PageTransitionProps) => {
-  const screenWidth = Dimensions.get("window").width;
-  const scheme = useColorScheme();
+  // Dimensions를 한 번만 계산하고 캐싱
+  const screenWidth = useMemo(() => Dimensions.get("window").width, []);
   
-  // 배너 슬라이더와 동일한 부드러운 애니메이션
-  const translateX = useSharedValue(isVisible ? 0 : (direction === "right" ? -screenWidth : screenWidth));
+  // 애니메이션 값 초기화 (direction 변경 시에도 올바르게 초기화)
+  const translateX = useSharedValue(0);
+  const directionRef = React.useRef(direction);
 
   useEffect(() => {
+    // direction이 변경되면 이전 애니메이션 취소
+    if (directionRef.current !== direction) {
+      cancelAnimation(translateX);
+      directionRef.current = direction;
+    }
+
     if (isVisible) {
       // 들어올 때: 방향에 따라 반대편에서 부드럽게 들어옴
       const enterFromX = direction === "right" ? -screenWidth : screenWidth;
@@ -35,7 +40,7 @@ export const PageTransition = ({
       
       // 배너 슬라이더와 유사한 부드러운 타이밍
       translateX.value = withTiming(0, {
-        duration: 350,
+        duration: 300,
         easing: Easing.bezier(0.25, 0.1, 0.25, 1), // iOS 기본 이징 커브
       });
     } else {
@@ -44,11 +49,11 @@ export const PageTransition = ({
       
       // 나가는 모션을 더 명확하게 보이도록
       translateX.value = withTiming(exitToX, {
-        duration: 300,
+        duration: 250,
         easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       });
     }
-  }, [isVisible, direction, screenWidth]);
+  }, [isVisible, direction, screenWidth, translateX]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -56,22 +61,16 @@ export const PageTransition = ({
         { translateX: translateX.value },
       ],
     };
-  });
-
-  if (showLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: scheme === "dark" ? "#0F172A" : "#F9FAFB" }]}>
-        <ActivityIndicator size="large" color={scheme === "dark" ? "#fff" : "#111"} />
-      </View>
-    );
-  }
+  }, []);
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
       {children}
     </Animated.View>
   );
-};
+});
+
+PageTransition.displayName = "PageTransition";
 
 const styles = StyleSheet.create({
   container: {
