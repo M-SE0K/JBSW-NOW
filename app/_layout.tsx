@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Tabs } from "expo-router";
+import { Tabs, usePathname, useRouter, useSegments } from "expo-router";
 import { useColorScheme, View, StyleSheet, Dimensions, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -9,6 +9,9 @@ import { setupAppFocus } from "../src/state/queryClient";
 import { AppHeaderLogo, AppHeaderNavigation, AppHeaderRight } from "../src/components/AppHeader";
 import ChatShortcutOverlay from "../src/components/ChatShortcutOverlay";
 import MobileTabBar from "../src/components/MobileTabBar";
+import { AnimatedTabBarButton } from "../src/components/AnimatedTabBarButton";
+import { getCurrentUser, subscribeAuth } from "../src/services/auth";
+import { User } from "firebase/auth";
 
 const HeaderComponent = () => {
   const [dimensions, setDimensions] = useState(Dimensions.get("window"));
@@ -114,8 +117,46 @@ const headerStyles = StyleSheet.create({
   },
 });
 
+// 인증이 필요 없는 경로 목록 (로그인/회원가입 페이지만 제외)
+const PUBLIC_ROUTES = [
+  "/auth/login",
+  "/auth/signup",
+];
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const pathname = usePathname();
+  const router = useRouter();
+  const segments = useSegments();
+  const [user, setUser] = useState<User | null>(getCurrentUser());
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // 인증 상태 구독
+  useEffect(() => {
+    const unsubscribe = subscribeAuth((authUser) => {
+      setUser(authUser);
+      setIsCheckingAuth(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  // 인증 보호 로직 - 모든 페이지를 보호하되, 인증 페이지만 제외
+  useEffect(() => {
+    if (isCheckingAuth) return;
+
+    const currentPath = pathname || "/";
+    const isPublicRoute = PUBLIC_ROUTES.some(route => currentPath.startsWith(route));
+
+    // 공개 경로가 아니고 로그인하지 않은 경우 모든 페이지를 보호
+    if (!isPublicRoute && !user) {
+      // 원래 가려던 경로를 저장하고 로그인 페이지로 리다이렉트
+      const redirectPath = encodeURIComponent(currentPath);
+      const loginPath = redirectPath !== "/" 
+        ? `/auth/login?redirect=${redirectPath}` as any
+        : "/auth/login" as any;
+      router.replace(loginPath);
+    }
+  }, [pathname, user, isCheckingAuth, router]);
 
   useEffect(() => {
     setupAppFocus();
@@ -136,6 +177,7 @@ export default function RootLayout() {
               header: () => <CustomHeader />,
               // 웹에서는 항상 헤더 표시
               headerShown: Platform.OS === "web" ? true : undefined,
+              tabBarButton: (props) => <AnimatedTabBarButton {...props} />,
               tabBarActiveTintColor: colorScheme === "dark" ? "#fff" : "#111",
               tabBarStyle: Platform.OS === "web" ? { display: "none" } : { 
                 display: "flex", 
@@ -150,6 +192,8 @@ export default function RootLayout() {
                 height: 60,
               },
               tabBarBackground: () => <View style={{ backgroundColor: colorScheme === "dark" ? "#0F172A" : "#F9FAFB", flex: 1 }} />,
+              // 기본 애니메이션 비활성화 (커스텀 애니메이션 사용)
+              animation: "none",
             }}
           >
             <Tabs.Screen

@@ -13,37 +13,30 @@ import {
 const OLLAMA_MODEL = process.env.EXPO_PUBLIC_OLLAMA_MODEL || "llama3.1:8b";
 
 // 프록시 서버 URL 설정
-// 모바일에서는 localhost 대신 개발 서버의 IP를 사용
+// 배포 환경: GitHub Secrets의 EXPO_PUBLIC_PROXY_URL 사용
+// 개발 환경: 로컬 프록시 서버 (localhost:8080)
+
 function getProxyUrl(): string {
-  let baseUrl = process.env.EXPO_PUBLIC_PROXY_URL || "http://192.168.45.4:4000";
-  // let baseUrl = process.env.EXPO_PUBLIC_PROXY_URL || "http://localhost:4000";
-  
-  // 환경 변수에서 포트 추출 (기본값: 4000)
-  const urlMatch = baseUrl.match(/http:\/\/([^:]+):?(\d+)?/);
-  const host = urlMatch?.[1] || "localhost";
-  const port = urlMatch?.[2] || "4000";
-  
-  // localhost를 사용하는 경우 (모바일에서는 작동하지 않음)
-  if (host === "localhost" || host === "127.0.0.1") {
-    // 웹에서는 localhost 사용
-    if (Platform.OS === "web") {
-      return `http://localhost:${port}`;
-    }
-    
-    // 모바일에서는 Expo 개발 서버의 IP 주소 사용
-    const debuggerHost = Constants.expoConfig?.hostUri?.split(":")[0] || 
-                         Constants.expoConfig?.extra?.host;
-    
-    if (debuggerHost && debuggerHost !== "localhost" && debuggerHost !== "127.0.0.1") {
-      return `http://${debuggerHost}:${port}`;
-    }
-    
-    // IP를 찾을 수 없으면 localhost 유지 (시뮬레이터에서는 작동할 수 있음)
-    return `http://localhost:${port}`;
+  // 환경변수가 있으면 우선 사용 (배포 환경)
+  if (process.env.EXPO_PUBLIC_PROXY_URL) {
+    return process.env.EXPO_PUBLIC_PROXY_URL;
   }
   
-  // 이미 IP 주소가 설정되어 있으면 그대로 사용
-  return baseUrl;
+  // 로컬 개발 환경
+  if (Platform.OS === "web") {
+    return "http://localhost:8080";
+  }
+  
+  // 모바일 개발 환경: Expo 개발 서버의 IP 주소 사용
+  const debuggerHost = Constants.expoConfig?.hostUri?.split(":")[0] || 
+                       Constants.expoConfig?.extra?.host;
+  
+  if (debuggerHost && debuggerHost !== "localhost" && debuggerHost !== "127.0.0.1") {
+    return `http://${debuggerHost}:8080`;
+  }
+  
+  // 기본값
+  return "http://localhost:8080";
 }
 
 const PROXY_URL = getProxyUrl();

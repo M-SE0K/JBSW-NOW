@@ -1,16 +1,9 @@
 const express = require("express");
 
 const app = express();
-// 환경변수 값의 앞뒤 공백을 제거하고, URL 끝의 슬래시를 제거하여 안전하게 처리
-const PORT = (process.env.PORT || "8080").toString().trim();
-// \ 문자나 기타 공백도 확실하게 제거
-const OLLAMA_URL = (process.env.OLLAMA_URL || "http://localhost:11434")
-  .toString()
-  .trim()
-  .replace(/\\$/, "")      // 끝에 붙은 역슬래시 제거
-  .replace(/\/$/, "")      // 끝에 붙은 슬래시 제거
-  .replace(/[\s\\]+$/, ""); // 혹시 몰라 공백+역슬래시 조합도 한번 더 제거
-const MAX_CONCURRENT_REQUESTS = parseInt((process.env.MAX_CONCURRENT_REQUESTS || "10").toString().trim(), 10);
+const PORT = process.env.PORT || 8080;
+const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
+const MAX_CONCURRENT_REQUESTS = parseInt(process.env.MAX_CONCURRENT_REQUESTS || "10", 10);
 
 // 동시 요청 제한 관리
 let activeRequests = 0;
@@ -278,4 +271,5 @@ app.listen(PORT, () => {
   console.log(`[ollama] Ollama URL: ${OLLAMA_URL}`);
   checkOllamaConnection();
 });
+
 
