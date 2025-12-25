@@ -1,4 +1,4 @@
-name: Deploy to Cloud Server
+name: Deploy to JCloud Server
 
 on:
   push:
