@@ -9,8 +9,11 @@ import EventCard from "../../src/components/EventCard";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
 import { enrichEventsWithTags, ALLOWED_TAGS, TAG_COLORS } from "../../src/services/tags";
 import { searchByAllWords, normalize, extractHashtags, filterItemsByAllTags } from "../../src/services/search";
+import { PageTransition } from "../../src/components/PageTransition";
+import { usePageTransition } from "../../src/hooks/usePageTransition";
 
 export default function SearchScreen() {
+  const { isVisible, isLoading, direction } = usePageTransition();
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; tag?: string }>();
   const scheme = useColorScheme();
@@ -148,7 +151,8 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <PageTransition isVisible={isVisible} showLoading={isLoading} direction={direction}>
+      <SafeAreaView style={styles.container}>
       {/* 검색 헤더 */}
       <View style={styles.header}>
         <View style={[styles.searchContainer, isHashtagMode && styles.searchContainerTagActive]}>
@@ -282,6 +286,7 @@ export default function SearchScreen() {
         )}
       </View>
     </SafeAreaView>
+    </PageTransition>
   );
 }
 

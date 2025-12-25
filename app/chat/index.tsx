@@ -17,6 +17,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Markdown from "react-native-markdown-display";
 import { askChat } from "../../src/api/chat";
+import { PageTransition } from "../../src/components/PageTransition";
+import { usePageTransition } from "../../src/hooks/usePageTransition";
 
 type Msg = { role: "user" | "bot"; text: string };
 
@@ -27,6 +29,7 @@ const QUICK_PROMPTS = [
 ];
 
 export default function ChatScreen() {
+  const { isVisible, isLoading, direction } = usePageTransition();
   const isDark = useColorScheme() === "dark";
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -125,10 +128,11 @@ export default function ChatScreen() {
   };
 
   return (
-    <SafeAreaView 
-      edges={Platform.OS === "web" ? ["top", "left", "right"] : undefined}
-      style={[styles.safeArea, { backgroundColor: isDark ? "#05070d" : "#f5f6fb" }]}
-    >
+    <PageTransition isVisible={isVisible} showLoading={isLoading} direction={direction}>
+      <SafeAreaView 
+        edges={Platform.OS === "web" ? ["top", "left", "right"] : undefined}
+        style={[styles.safeArea, { backgroundColor: isDark ? "#05070d" : "#f5f6fb" }]}
+      >
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -408,6 +412,7 @@ export default function ChatScreen() {
         </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </PageTransition>
   );
 }
 

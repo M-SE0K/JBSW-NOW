@@ -8,18 +8,22 @@ import Loading from "../../src/components/Loading";
 import ErrorState from "../../src/components/ErrorState";
 import { formatDateTime } from "../../src/utils/date";
 import { incrementHotClick } from "../../src/services/hot";
+import { PageTransition } from "../../src/components/PageTransition";
+import { usePageTransition } from "../../src/hooks/usePageTransition";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const scheme = useColorScheme();
   const query = useQuery({ queryKey: ["event", id], queryFn: () => fetchEventById(id!) });
+  const { isVisible, isLoading, direction } = usePageTransition();
 
   if (query.isLoading) return <Loading />;
   if (query.isError) return <ErrorState message={(query.error as Error)?.message} onRetry={() => query.refetch()} />;
 
   const e = query.data!;
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <PageTransition isVisible={isVisible} showLoading={isLoading} direction={direction}>
+      <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text style={{ fontSize: 20, fontWeight: "800", color: scheme === "dark" ? "#fff" : "#111" }}>{e.title}</Text>
         {e.org?.name ? (
@@ -74,6 +78,7 @@ export default function EventDetailScreen() {
         ) : null}
       </ScrollView>
     </SafeAreaView>
+    </PageTransition>
   );
 }
 
