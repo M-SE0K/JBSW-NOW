@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { initializeAuth, getAuth } from 'firebase/auth';
+import { initializeAuth, getAuth, Auth } from 'firebase/auth';
 import { Platform } from 'react-native';
 
 // Initialize Firebase
@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 // Initialize Auth with platform-specific persistence
-let auth;
+let auth: Auth;
 if (Platform.OS === 'web') {
   auth = getAuth(app);
 } else {
