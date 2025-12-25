@@ -18,6 +18,20 @@ export const ALLOWED_TAGS = [
 
 export type AllowedTag = typeof ALLOWED_TAGS[number];
 
+// 태그별 색상 매핑
+export const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> = {
+  "수강": { bg: "#E3F2FD", text: "#1976D2", border: "#BBDEFB" },
+  "졸업": { bg: "#F3E5F5", text: "#7B1FA2", border: "#CE93D8" },
+  "학사": { bg: "#E8F5E9", text: "#388E3C", border: "#A5D6A7" },
+  "일반": { bg: "#FAFAFA", text: "#616161", border: "#E0E0E0" },
+  "대학원": { bg: "#FFF3E0", text: "#E65100", border: "#FFCC80" },
+  "취업": { bg: "#FFEBEE", text: "#C62828", border: "#EF9A9A" },
+  "공모전": { bg: "#E1F5FE", text: "#0277BD", border: "#81D4FA" },
+  "봉사활동": { bg: "#F1F8E9", text: "#558B2F", border: "#AED581" },
+  "교내활동": { bg: "#FCE4EC", text: "#C2185B", border: "#F48FB1" },
+  "대외활동": { bg: "#E0F2F1", text: "#00695C", border: "#80CBC4" },
+};
+
 const cache = new Map<string, AllowedTag[]>();
 
 // 최근 동기화된 기준 해시를 보관해 중복 쓰기를 방지합니다.

@@ -1,37 +1,25 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Event } from "../../src/types";
 import EventCard from "../../src/components/EventCard";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
-import { enrichEventsWithTags, ALLOWED_TAGS } from "../../src/services/tags";
+import { enrichEventsWithTags, ALLOWED_TAGS, TAG_COLORS } from "../../src/services/tags";
 import { searchByAllWords, normalize, extractHashtags, filterItemsByAllTags } from "../../src/services/search";
-
-// 태그별 색상 매핑
-const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> = {
-  "수강": { bg: "#E3F2FD", text: "#1976D2", border: "#BBDEFB" },
-  "졸업": { bg: "#F3E5F5", text: "#7B1FA2", border: "#CE93D8" },
-  "학사": { bg: "#E8F5E9", text: "#388E3C", border: "#A5D6A7" },
-  "일반": { bg: "#FAFAFA", text: "#616161", border: "#E0E0E0" },
-  "대학원": { bg: "#FFF3E0", text: "#E65100", border: "#FFCC80" },
-  "취업": { bg: "#FFEBEE", text: "#C62828", border: "#EF9A9A" },
-  "공모전": { bg: "#E1F5FE", text: "#0277BD", border: "#81D4FA" },
-  "봉사활동": { bg: "#F1F8E9", text: "#558B2F", border: "#AED581" },
-  "교내활동": { bg: "#FCE4EC", text: "#C2185B", border: "#F48FB1" },
-  "대외활동": { bg: "#E0F2F1", text: "#00695C", border: "#80CBC4" },
-};
 
 export default function SearchScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ q?: string; tag?: string }>();
   const scheme = useColorScheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [allItems, setAllItems] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const RECENT_KEY = "recentSearches";
 
   const isHashtagMode = useMemo(() => {
@@ -44,6 +32,25 @@ export default function SearchScreen() {
     loadRecentSearches();
     preloadData();
   }, []);
+
+  // URL 파라미터에서 검색어/태그를 받아 자동 검색 수행
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    
+    // 태그 파라미터가 있으면 해시태그 검색
+    if (params.tag && typeof params.tag === "string") {
+      const tagQuery = `#${params.tag}`;
+      setSearchQuery(tagQuery);
+      performSearch(tagQuery);
+      return;
+    }
+    
+    // 일반 검색어 파라미터가 있으면 검색 수행
+    if (params.q && typeof params.q === "string") {
+      setSearchQuery(params.q);
+      performSearch(params.q);
+    }
+  }, [params.q, params.tag, isDataLoaded]);
 
   // 컴포넌트 마운트 시 최근 검색어 재로드
   // (포커스 시 재로드는 네비게이션 훅 문제로 제거)
@@ -77,28 +84,34 @@ export default function SearchScreen() {
       } as any));
       const noticeAsEvents = await enrichEventsWithTags(noticeAsEventsRaw as any);
       setAllItems(noticeAsEvents);
+      setIsDataLoaded(true);
     } catch (e) {
       console.warn("[UI] preloadData error", e);
       setAllItems([]);
+      setIsDataLoaded(true);
     }
   };
 
-  const handleSearch = async () => {
-    const q = normalize(searchQuery);
+  // 검색 수행 함수 (외부에서 호출 가능)
+  const performSearch = useCallback(async (query: string, saveToRecent = true) => {
+    const q = normalize(query);
     if (!q) {
       setIsSearching(false);
       setResults([]);
       return;
     }
-    // 최근 검색어 저장
-    try {
-      const beforeRaw = await AsyncStorage.getItem(RECENT_KEY);
-      const before = beforeRaw ? (JSON.parse(beforeRaw) as string[]) : [];
-      const updated = [q, ...before.filter((v) => v !== q)].slice(0, 10);
-      await AsyncStorage.setItem(RECENT_KEY, JSON.stringify(updated));
-      console.log("[SEARCH] saveRecentSearch", { query: q, before: before.length, after: updated.length });
-      setRecentSearches(updated);
-    } catch {}
+    
+    // 최근 검색어 저장 (옵션)
+    if (saveToRecent) {
+      try {
+        const beforeRaw = await AsyncStorage.getItem(RECENT_KEY);
+        const before = beforeRaw ? (JSON.parse(beforeRaw) as string[]) : [];
+        const updated = [q, ...before.filter((v) => v !== q)].slice(0, 10);
+        await AsyncStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+        console.log("[SEARCH] saveRecentSearch", { query: q, before: before.length, after: updated.length });
+        setRecentSearches(updated);
+      } catch {}
+    }
 
     const tags = extractHashtags(q);
     const found = tags.length > 0
@@ -106,22 +119,22 @@ export default function SearchScreen() {
       : searchByAllWords(allItems as any, q, ["title", "summary", "tags"] as any);
     setIsSearching(true);
     setResults(found);
+  }, [allItems]);
+
+  const handleSearch = async () => {
+    await performSearch(searchQuery, true);
   };
 
   const handleRecentSearchPress = async (query: string) => {
     console.log("[SEARCH] pressRecentSearch", { query });
     setSearchQuery(query);
-    setIsSearching(false);
-    setResults([]);
-    setTimeout(() => handleSearch(), 0);
+    await performSearch(query, false); // 이미 저장된 검색어이므로 다시 저장하지 않음
   };
 
-  const handleTagPress = (tag: string) => {
+  const handleTagPress = async (tag: string) => {
     const tagQuery = `#${tag}`;
     setSearchQuery(tagQuery);
-    setIsSearching(false);
-    setResults([]);
-    setTimeout(() => handleSearch(), 0);
+    await performSearch(tagQuery, true);
   };
 
   const handleClearRecent = async () => {
@@ -133,8 +146,6 @@ export default function SearchScreen() {
       console.error("최근 검색어 삭제 실패:", error);
     }
   };
-
-  const allEvents = results;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -209,9 +220,9 @@ export default function SearchScreen() {
         {isSearching ? (
           // 검색 결과
           <View style={styles.searchResults}>
-            {allEvents.length > 0 ? (
+            {results.length > 0 ? (
               <FlatList
-                data={allEvents}
+                data={results}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <EventCard 
@@ -406,44 +417,6 @@ const styles = StyleSheet.create({
   searchResults: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: "#666",
-  },
-  resultItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  resultContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  resultTitle: {
-    marginLeft: 12,
-    fontSize: 16,
-    color: "#000",
-  },
-  recentItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  recentText: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-    color: "#000",
-  },
   emptyState: {
     flex: 1,
     justifyContent: "center",
@@ -455,5 +428,3 @@ const styles = StyleSheet.create({
     color: "#999",
   },
 });
-
-
