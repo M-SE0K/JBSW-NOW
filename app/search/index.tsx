@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, TextInput, Pressable, StyleSheet, FlatList, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,8 +12,8 @@ import { searchByAllWords, normalize, extractHashtags, filterItemsByAllTags } fr
 import { PageTransition } from "../../src/components/PageTransition";
 import { usePageTransition } from "../../src/hooks/usePageTransition";
 
-export default function SearchScreen() {
-  const { isVisible, isLoading, direction } = usePageTransition();
+const SearchScreen = memo(() => {
+  const { isVisible, direction } = usePageTransition();
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; tag?: string }>();
   const scheme = useColorScheme();
@@ -151,7 +151,7 @@ export default function SearchScreen() {
   };
 
   return (
-    <PageTransition isVisible={isVisible} showLoading={isLoading} direction={direction}>
+    <PageTransition isVisible={isVisible} direction={direction}>
       <SafeAreaView style={styles.container}>
       {/* 검색 헤더 */}
       <View style={styles.header}>
@@ -288,7 +288,11 @@ export default function SearchScreen() {
     </SafeAreaView>
     </PageTransition>
   );
-}
+});
+
+SearchScreen.displayName = "SearchScreen";
+
+export default SearchScreen;
 
 const styles = StyleSheet.create({
   container: {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, memo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   View,
@@ -28,8 +28,8 @@ const QUICK_PROMPTS = [
   "관심 태그 관련 소식있어?",
 ];
 
-export default function ChatScreen() {
-  const { isVisible, isLoading, direction } = usePageTransition();
+const ChatScreen = memo(() => {
+  const { isVisible, direction } = usePageTransition();
   const isDark = useColorScheme() === "dark";
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -128,7 +128,7 @@ export default function ChatScreen() {
   };
 
   return (
-    <PageTransition isVisible={isVisible} showLoading={isLoading} direction={direction}>
+    <PageTransition isVisible={isVisible} direction={direction}>
       <SafeAreaView 
         edges={Platform.OS === "web" ? ["top", "left", "right"] : undefined}
         style={[styles.safeArea, { backgroundColor: isDark ? "#05070d" : "#f5f6fb" }]}
@@ -414,7 +414,11 @@ export default function ChatScreen() {
     </SafeAreaView>
     </PageTransition>
   );
-}
+});
+
+ChatScreen.displayName = "ChatScreen";
+
+export default ChatScreen;
 
 const styles = StyleSheet.create({
   safeArea: {

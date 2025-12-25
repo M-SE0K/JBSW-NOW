@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, memo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, ScrollView, TouchableOpacity, useColorScheme, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,9 +11,10 @@ import { useLocalSearchParams } from "expo-router";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
 import { PageTransition } from "../../src/components/PageTransition";
 import { usePageTransition } from "../../src/hooks/usePageTransition";
+import Loading from "../../src/components/Loading";
 
-export default function EventsScreen() {
-  const { isVisible, isLoading, direction } = usePageTransition();
+const EventsScreen = memo(() => {
+  const { isVisible, direction } = usePageTransition();
   const params = useLocalSearchParams<{ tag?: string }>();
   const scheme = useColorScheme();
   const [searchQuery, setSearchQuery] = useState("");
@@ -22,6 +23,7 @@ export default function EventsScreen() {
   const [allItems, setAllItems] = useState<any[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [favTick, setFavTick] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   // URL 파라미터에서 tag를 받아서 초기 selectedTag 설정
   useEffect(() => {
@@ -32,6 +34,7 @@ export default function EventsScreen() {
 
   // 새로운 소식 데이터 로드 (notices만 사용, date 내림차순)
   useEffect(() => {
+    setIsLoading(true);
     (async () => {
       try {
         const notices = await fetchNoticesCleaned(100);
@@ -58,6 +61,8 @@ export default function EventsScreen() {
       } catch (e) {
         console.warn("[UI] fetchRecentNews error", e);
         setAllItems([]);
+      } finally {
+        setIsLoading(false);
       }
     })();
   }, []);
@@ -171,8 +176,12 @@ export default function EventsScreen() {
   }, [searchQuery]);
 
   return (
-    <PageTransition isVisible={isVisible} showLoading={isLoading} direction={direction}>
+    <PageTransition isVisible={isVisible} direction={direction}>
       <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "left", "right"]}>
+      {isLoading ? (
+        <Loading label="소식을 불러오는 중..." />
+      ) : (
+        <>
       {/* 검색 헤더 */}
       <View style={styles.header}>
         <View style={[styles.searchContainer, isHashtagMode && styles.searchContainerTagActive]}>
@@ -296,10 +305,16 @@ export default function EventsScreen() {
           />
         )}
       </View>
+        </>
+      )}
     </SafeAreaView>
     </PageTransition>
   );
-}
+});
+
+EventsScreen.displayName = "EventsScreen";
+
+export default EventsScreen;
 
 const styles = {
   header: {
