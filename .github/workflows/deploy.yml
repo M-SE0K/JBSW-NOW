@@ -23,6 +23,8 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           command_timeout: 30m
           script: |
+            set -e  # 에러 발생 시 즉시 중단
+            
             echo "=========================================="
             echo "📁 Moving to project directory..."
             echo "=========================================="
