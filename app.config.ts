@@ -5,7 +5,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: "jb-sw-integrated-info",
   slug: "jb-sw-integrated-info",
   scheme: "jb-sw-info",
-  owner: "m-se0k",
+  owner: "igaeun8",
   version: "1.0.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
@@ -27,19 +27,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     typedRoutes: true,
   },
   plugins: [
-    "expo-dev-client",
+    // "expo-dev-client", // Expo Go에서는 사용 불가 - 주석 처리
     ["expo-router"],
     ["expo-notifications"],
     ["expo-secure-store"],
     ["expo-font"],
-    ["expo-firebase-core", { ios: { googleServicesFile: "./GoogleService-Info.plist" } }],
   ],
   
   extra: {
-    router: {
-      // origin: "expo",
-      origin: "https://localhost:8081",
-    },
+    // router 설정 제거 (Expo Go에서 자동으로 처리됨)
     firebase: {
       apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
       authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -51,7 +47,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
     },
     eas: {
-      projectId: "af95bb91-387a-49fd-9652-513f03fffcc7",
+      projectId: "3590f61a-0958-4afa-8119-839d918f931e",
     },
   },
 });

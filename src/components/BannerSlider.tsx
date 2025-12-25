@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { View, Image, ScrollView, Dimensions, ActivityIndicator, TouchableOpacity } from "react-native";
 import { fetchRecentNoticeBanners } from "../api/eventsFirestore";
-import { maybeProxyForWeb } from "../utils/imageProxy";
 import type { Event } from "../types";
 
 const { width } = Dimensions.get("window");
@@ -12,9 +11,10 @@ type Props = {
   limit?: number;
   onPressItem?: (event: Event) => void;
   imageUrls?: string[]; // 하드코딩된 배너 이미지 URL 배열 (제공 시 이 값을 우선 사용)
+  imageSourceUrls?: Record<string, string>; // 이미지 URL을 키로 하는 sourceUrl 매핑 (선택사항)
 };
 
-export const BannerSlider = ({ limit = 10, onPressItem, imageUrls }: Props) => {
+export const BannerSlider = ({ limit = 10, onPressItem, imageUrls, imageSourceUrls }: Props) => {
   const [items, setItems] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -32,15 +32,13 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls }: Props) => {
             title: "",
             startAt: nowIso,
             org: { id: "hardcoded", name: "hardcoded", logoUrl: null },
-            sourceUrl: null,
+            sourceUrl: imageSourceUrls?.[url] || null,
             posterImageUrl: url,
           }));
           if (mounted) setItems(hardcoded.slice(0, limit));
           return;
         }
 
-        // 2) 기본: 최근 공지형 배너를 가져와 사용
-        console.log("[UI] BannerSlider:fetch start", { limit });
         const notices = await fetchRecentNoticeBanners(limit);
         const onlyNotices = notices.filter(d => !!d.posterImageUrl);
         if (mounted) setItems(onlyNotices.slice(0, limit));
@@ -48,7 +46,7 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls }: Props) => {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; console.log("[UI] BannerSlider:unmount"); };
+    return () => { mounted = false; };
   }, [limit, imageUrls]);
 
   useEffect(() => {
@@ -56,14 +54,11 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls }: Props) => {
     const timer = setInterval(() => {
       setIndex((prev) => {
         const next = (prev + 1) % items.length;
-        // if (next !== prev) {
-        //   console.log("[UI] BannerSlider:auto-advance", { from: prev, to: next, total: items.length });
-        // }
         scrollRef.current?.scrollTo({ x: next * ITEM_WIDTH, animated: true });
         return next;
       });
     }, 4000);
-    return () => { clearInterval(timer); console.log("[UI] BannerSlider:auto-advance:stopped"); };
+    return () => clearInterval(timer);
   }, [items.length]);
 
   if (loading) {
@@ -75,7 +70,6 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls }: Props) => {
   }
 
   if (!items.length) {
-    console.log("[UI] BannerSlider:empty");
     return <View style={{ height: ITEM_HEIGHT }} />;
   }
 
@@ -88,19 +82,15 @@ export const BannerSlider = ({ limit = 10, onPressItem, imageUrls }: Props) => {
         showsHorizontalScrollIndicator={false}
         onScroll={(e) => {
           const i = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
-          // if (i !== index) {
-          //   //console.log("[UI] BannerSlider:scroll", { from: index, to: i });
-          // }
           setIndex(i);
         }}
         scrollEventThrottle={16}
       >
         {items.map((ev) => (
-          <TouchableOpacity key={ev.id} activeOpacity={0.9} onPress={() => { console.log("[UI] BannerSlider:press", { id: ev.id, url: ev.posterImageUrl, sourceUrl: ev.sourceUrl }); onPressItem?.(ev); }}>
+          <TouchableOpacity key={ev.id} activeOpacity={0.9} onPress={() => onPressItem?.(ev)}>
             <Image
               source={{ uri: maybeProxyForWeb(ev.posterImageUrl as string) as string }}
               style={{ width: ITEM_WIDTH, height: ITEM_HEIGHT, resizeMode: "cover" }}
-              onLoad={() => console.log("[UI] BannerSlider:image load", { id: ev.id })}
               onError={(err) => console.warn("[UI] BannerSlider:image error", { id: ev.id, error: err?.nativeEvent || err })}
             />
           </TouchableOpacity>

@@ -10,12 +10,13 @@ type Props = {
   onPressItem?: (event: Event) => void;
   style?: any;
   ListHeaderComponent?: React.ReactNode;
+  ListFooterComponent?: React.ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
   extraData?: any;
 };
 
-export default function EventsList({ events, placeholderColor, emptyText = "최근 소식이 없습니다.", onPressItem, style, ListHeaderComponent, refreshing, onRefresh, extraData }: Props) {
+export default function EventsList({ events, placeholderColor, emptyText = "최근 소식이 없습니다.", onPressItem, style, ListHeaderComponent, ListFooterComponent, refreshing, onRefresh, extraData }: Props) {
   const renderItem = ({ item }: { item: Event }) => (
     <EventCard event={item} onPress={() => onPressItem?.(item)} />
   );
@@ -32,10 +33,11 @@ export default function EventsList({ events, placeholderColor, emptyText = "최�
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
       style={[{ flex: 1 }, style]}
-      contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 24 }}
+      contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24 }}
       showsVerticalScrollIndicator={false}
       ListEmptyComponent={renderEmptyComponent}
       ListHeaderComponent={ListHeaderComponent as any}
+      ListFooterComponent={ListFooterComponent as any}
       refreshing={refreshing}
       onRefresh={onRefresh}
       extraData={extraData}

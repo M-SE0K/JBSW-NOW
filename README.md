@@ -60,6 +60,16 @@ cd JBSW-NOW
 npm run setup
 ```
 
+### 필수 패키지 설치
+
+```bash
+# 프로젝트 의존성 설치 (react-native-svg 포함)
+npm install
+
+# 또는 react-native-svg만 별도 설치하는 경우
+npm install react-native-svg
+```
+
 ### 실행 방법
 
 ```bash

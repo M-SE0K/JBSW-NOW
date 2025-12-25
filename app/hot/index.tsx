@@ -9,7 +9,7 @@ import { fetchRecentHotTopWithinDays, getHotClickCounts } from "../../src/servic
 import { fetchNoticesCleaned, type Notice } from "../../src/api/eventsFirestore";
 import { normalize } from "../../src/services/search";
 import { subscribe as subscribeFavorites, ensureUserId as ensureFavUser } from "../../src/services/favorites";
-import { enrichEventsWithTags, ALLOWED_TAGS } from "../../src/services/tags";
+import { enrichEventsWithTags } from "../../src/services/tags";
 
 // 태그별 색상 매핑 (검색 페이지와 동일)
 const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> = {
@@ -247,7 +247,7 @@ export default function HotScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}> 
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}> 
       <View style={styles.content}>
         {loading ? (
           <View style={styles.loadingBox}>
@@ -264,7 +264,7 @@ export default function HotScreen() {
             style={{ paddingTop: 0 }}
             ListHeaderComponent={
               <View>
-                <SectionHeader title="실시간 인기 소식" showMore={false} style={{ marginTop: 0 }} />
+                <SectionHeader title="실시간 인기 소식" showMore={false} style={{ marginTop: 8 }} />
                 {allTags.length > 0 && (
                   <View style={styles.tagFilterContainer}>
                     <ScrollView 
@@ -276,7 +276,6 @@ export default function HotScreen() {
                         onPress={() => setSelectedTag(null)}
                         style={[
                           styles.tagButton,
-                          selectedTag === null && styles.tagButtonActive,
                           { backgroundColor: selectedTag === null 
                             ? (scheme === "dark" ? "#2f80ed" : "#2f80ed")
                             : (scheme === "dark" ? "#2a2a2a" : "#f1f1f1")
@@ -285,7 +284,6 @@ export default function HotScreen() {
                       >
                         <Text style={[
                           styles.tagButtonText,
-                          selectedTag === null && styles.tagButtonTextActive,
                           { color: selectedTag === null 
                             ? "#fff" 
                             : (scheme === "dark" ? "#ddd" : "#333")
@@ -378,15 +376,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  tagButtonActive: {
-    // 활성화 스타일은 동적 색상으로 처리
-  },
   tagButtonText: {
     fontSize: 13,
     fontWeight: "600",
-  },
-  tagButtonTextActive: {
-    // 활성화 텍스트 스타일은 동적 색상으로 처리
   },
 });
 

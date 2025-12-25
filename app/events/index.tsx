@@ -1,19 +1,13 @@
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { FlatList, RefreshControl, View, Button, TextInput, Pressable, ActivityIndicator, Text, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
+import { View, TextInput, Text, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import EventCard from "../../src/components/EventCard";
-import Loading from "../../src/components/Loading";
-import ErrorState from "../../src/components/ErrorState";
-import EmptyState from "../../src/components/EmptyState";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
-import { enrichEventsWithTags, ALLOWED_TAGS } from "../../src/services/tags";
-import { normalize, tokenize, searchByAllWords } from "../../src/services/search";
-import { Event } from "../../src/types";
-import { useRouter } from "expo-router";
+import { enrichEventsWithTags } from "../../src/services/tags";
+import { normalize, searchByAllWords } from "../../src/services/search";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
 
 // 태그별 색상 매핑 (검색 페이지와 동일)
@@ -32,6 +26,7 @@ const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> 
 
 export default function EventsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ tag?: string }>();
   const scheme = useColorScheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -39,6 +34,13 @@ export default function EventsScreen() {
   const [allItems, setAllItems] = useState<any[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [favTick, setFavTick] = useState<number>(0);
+
+  // URL 파라미터에서 tag를 받아서 초기 selectedTag 설정
+  useEffect(() => {
+    if (params.tag && typeof params.tag === "string") {
+      setSelectedTag(params.tag);
+    }
+  }, [params.tag]);
 
   // 새로운 소식 데이터 로드 (notices만 사용, date 내림차순)
   useEffect(() => {
@@ -162,7 +164,7 @@ export default function EventsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "left", "right"]}>
       {/* 검색 헤더 */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
@@ -284,8 +286,7 @@ const styles = {
     alignItems: "center" as const,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingTop: 8,
   },
   searchContainer: {
     width: "100%" as const,
