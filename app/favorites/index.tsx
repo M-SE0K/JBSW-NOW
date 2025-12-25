@@ -40,7 +40,6 @@ export default function FavoritesScreen() {
       [...noticesWithTags, ...(recentEvents || [])].forEach((e) => { if (e && e.id) mergedMap.set(e.id, e); });
       setAllItems(Array.from(mergedMap.values()));
     } catch (e) {
-      console.warn("[FAV] loadAll error", e);
       setAllItems([]);
     } finally {
       setLoading(false);

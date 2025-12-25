@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { View, Image, ScrollView, Dimensions, ActivityIndicator, TouchableOpacity } from "react-native";
 import { fetchRecentNoticeBanners } from "../api/eventsFirestore";
+import { maybeProxyForWeb } from "../utils/imageProxy";
 import type { Event } from "../types";
 
 const { width } = Dimensions.get("window");
