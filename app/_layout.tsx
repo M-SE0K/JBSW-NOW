@@ -134,6 +134,8 @@ export default function RootLayout() {
             tabBar={Platform.OS === "web" ? undefined : MobileTabBar}
             screenOptions={{
               header: () => <CustomHeader />,
+              // 웹에서는 항상 헤더 표시
+              headerShown: Platform.OS === "web" ? true : undefined,
               tabBarActiveTintColor: colorScheme === "dark" ? "#fff" : "#111",
               tabBarStyle: Platform.OS === "web" ? { display: "none" } : { 
                 display: "flex", 
@@ -158,21 +160,21 @@ export default function RootLayout() {
             <Tabs.Screen
               name="favorites/index"
               options={{
-                headerShown: false,
+                headerShown: Platform.OS === "web",
               }}
             />
 
             <Tabs.Screen
               name="hot/index"
               options={{
-                headerShown: false,
+                headerShown: Platform.OS === "web",
               }}
             />
             <Tabs.Screen
               name="auth/login"
               options={{
                 href: null,
-                headerShown: false,
+                headerShown: Platform.OS === "web",
                 tabBarStyle: { display: "none" },
               }}
             />
@@ -180,7 +182,7 @@ export default function RootLayout() {
               name="auth/signup"
               options={{
                 href: null,
-                headerShown: false,
+                headerShown: Platform.OS === "web",
                 tabBarStyle: { display: "none" },
               }}
             />
@@ -189,14 +191,14 @@ export default function RootLayout() {
               name="chat/index"
               options={{
                 href: null,
-                headerShown: false,
+                headerShown: Platform.OS === "web",
               }}
             />
             <Tabs.Screen
               name="events/index"
               options={{
                 href: null,
-                headerShown: false,
+                headerShown: Platform.OS === "web",
               }}
             />
             <Tabs.Screen name="events/[id]" options={{ href: null }} />
@@ -206,35 +208,35 @@ export default function RootLayout() {
               name="notification/index"
               options={{
                 href: null,
-                headerShown: false,
+                headerShown: Platform.OS === "web",
               }}
             />
             <Tabs.Screen
               name="notification/settings"
               options={{
                 href: null,
-                headerShown: false,
+                headerShown: Platform.OS === "web",
               }}
             />
             <Tabs.Screen
               name="search/index"
               options={{
                 href: null,
-                headerShown: false,
+                headerShown: Platform.OS === "web",
               }}
             />
             <Tabs.Screen
               name="settings/index"
               options={{
                 href: null,
-                headerShown: false,
+                headerShown: Platform.OS === "web",
               }}
             />
             <Tabs.Screen
               name="test/local-image"
               options={{
                 href: null,
-                headerShown: false,
+                headerShown: Platform.OS === "web",
               }}
             />
             <Tabs.Screen name="test/firebase" options={{ href: null }} />

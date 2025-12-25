@@ -1,31 +1,16 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, TextInput, Text, ScrollView, TouchableOpacity, useColorScheme } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, useColorScheme, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import SectionHeader from "../../src/components/SectionHeader";
 import EventsList from "../../src/components/EventsList";
 import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
-import { enrichEventsWithTags } from "../../src/services/tags";
-import { normalize, searchByAllWords } from "../../src/services/search";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { enrichEventsWithTags, TAG_COLORS } from "../../src/services/tags";
+import { searchByAllWords, normalize, extractHashtags, filterItemsByAllTags } from "../../src/services/search";
+import { useLocalSearchParams } from "expo-router";
 import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
 
-// 태그별 색상 매핑 (검색 페이지와 동일)
-const TAG_COLORS: Record<string, { bg: string; text: string; border?: string }> = {
-  "수강": { bg: "#E3F2FD", text: "#1976D2", border: "#BBDEFB" },
-  "졸업": { bg: "#F3E5F5", text: "#7B1FA2", border: "#CE93D8" },
-  "학사": { bg: "#E8F5E9", text: "#388E3C", border: "#A5D6A7" },
-  "일반": { bg: "#FAFAFA", text: "#616161", border: "#E0E0E0" },
-  "대학원": { bg: "#FFF3E0", text: "#E65100", border: "#FFCC80" },
-  "취업": { bg: "#FFEBEE", text: "#C62828", border: "#EF9A9A" },
-  "공모전": { bg: "#E1F5FE", text: "#0277BD", border: "#81D4FA" },
-  "봉사활동": { bg: "#F1F8E9", text: "#558B2F", border: "#AED581" },
-  "교내활동": { bg: "#FCE4EC", text: "#C2185B", border: "#F48FB1" },
-  "대외활동": { bg: "#E0F2F1", text: "#00695C", border: "#80CBC4" },
-};
-
 export default function EventsScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams<{ tag?: string }>();
   const scheme = useColorScheme();
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,7 +79,7 @@ export default function EventsScreen() {
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     allItems.forEach((event) => {
-      event.tags?.forEach((tag) => tagSet.add(tag));
+      event.tags?.forEach((tag: string) => tagSet.add(tag));
     });
     return Array.from(tagSet).sort();
   }, [allItems]);
@@ -110,15 +95,14 @@ export default function EventsScreen() {
 
   // 현재 렌더링 중인 목록의 상위 3개(title/summary/id) 로그
   useEffect(() => {
-    const items = isSearching ? searchResults : filteredNews;
-    const preview = (items || []).slice(0, 3).map((it: any, idx: number) => ({
+    const preview = (filteredNews || []).slice(0, 3).map((it: any, idx: number) => ({
       idx: idx + 1,
       id: it?.id,
       title: typeof it?.title === "string" ? it.title.slice(0, 80) : it?.title,
       summary: typeof it?.summary === "string" ? it.summary.slice(0, 200) : it?.summary,
     }));
     console.log("[events] preview", preview);
-  }, [isSearching, filteredNews, searchResults]);
+  }, [filteredNews]);
 
   function deriveIsoDate(input?: string | null): string {
     if (!input || typeof input !== "string") return new Date().toISOString();
@@ -151,6 +135,7 @@ export default function EventsScreen() {
     return Number.isNaN(t) ? 0 : t;
   }
 
+  // 검색 수행 (search 서비스의 함수 사용)
   const handleSearch = () => {
     const q = normalize(searchQuery);
     if (!q) {
@@ -158,25 +143,56 @@ export default function EventsScreen() {
       setSearchResults([]);
       return;
     }
-    const results = searchByAllWords(allItems, q, ["title", "summary"] as any);
+    
+    // 해시태그 모드 지원
+    const tags = extractHashtags(q);
+    const found = tags.length > 0
+      ? filterItemsByAllTags(allItems as any, tags)
+      : searchByAllWords(allItems as any, q, ["title", "summary", "tags"] as any);
+    
     setIsSearching(true);
-    setSearchResults(results);
+    setSearchResults(found);
   };
+
+  // 검색 초기화
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    setIsSearching(false);
+    setSearchResults([]);
+  };
+
+  // 해시태그 모드 여부
+  const isHashtagMode = useMemo(() => {
+    const q = normalize(searchQuery);
+    return extractHashtags(q).length > 0;
+  }, [searchQuery]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "left", "right"]}>
       {/* 검색 헤더 */}
       <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+        <View style={[styles.searchContainer, isHashtagMode && styles.searchContainerTagActive]}>
+          <Ionicons name="search" size={20} color={isHashtagMode ? "#7C3AED" : "#999"} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="새로운 소식 검색"
+            placeholderTextColor="#999"
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}
             returnKeyType="search"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
+              <Ionicons name="close-circle" size={20} color="#999" />
+            </TouchableOpacity>
+          )}
+          {isHashtagMode && (
+            <View style={styles.tagModeBadge}>
+              <Ionicons name="pricetag" size={12} color="#7C3AED" />
+              <Text style={styles.tagModeText}>태그</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -184,23 +200,22 @@ export default function EventsScreen() {
       <View style={styles.content}>
         {isSearching ? (
           // 검색 결과
-          <View style={styles.searchResults}>
-            {searchResults.length > 0 ? (
-              <EventsList
-                events={searchResults as any}
-                placeholderColor="#f5f5f5"
-                emptyText="검색 결과가 없습니다"
-                onPressItem={(ev: any) => {
-                  console.log("[UI] search result press", ev.id);
-                }}
-                extraData={favTick}
-              />
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
+          <EventsList
+            events={searchResults as any}
+            placeholderColor="#f5f5f5"
+            emptyText="검색 결과가 없습니다"
+            onPressItem={(ev: any) => {
+              console.log("[UI] search result press", ev.id);
+            }}
+            extraData={favTick}
+            ListHeaderComponent={
+              <View style={styles.searchResultHeader}>
+                <Text style={styles.searchResultCount}>
+                  검색 결과 {searchResults.length}건
+                </Text>
               </View>
-            )}
-          </View>
+            }
+          />
         ) : (
           // 새로운 소식 목록
           <EventsList
@@ -296,6 +311,12 @@ const styles = {
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "transparent" as const,
+  },
+  searchContainerTagActive: {
+    borderColor: "#E9D5FF",
+    backgroundColor: "#FAF5FF",
   },
   searchIcon: {
     marginRight: 8,
@@ -305,21 +326,38 @@ const styles = {
     fontSize: 16,
     color: "#000",
   },
+  clearButton: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  tagModeBadge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "#F3E8FF",
+    marginLeft: 8,
+  },
+  tagModeText: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: "#7C3AED",
+  },
   content: {
     flex: 1,
   },
-  searchResults: {
-    flex: 1,
+  searchResultHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: "center" as const,
-    alignItems: "center" as const,
-    paddingVertical: 60,
-  },
-  emptyText: {
+  searchResultCount: {
     fontSize: 14,
-    color: "#999",
+    fontWeight: "600" as const,
+    color: "#666",
   },
   tagFilterContainer: {
     paddingVertical: 12,
