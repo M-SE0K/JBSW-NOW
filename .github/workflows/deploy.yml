@@ -80,7 +80,7 @@ jobs:
             sudo docker run -d \
               --net=host \
               -e PORT=8080 \
-              -e OLLAMA_URL=${{ secrets.OLLAMA_URL }} \
+              -e OLLAMA_URL="${{ secrets.OLLAMA_URL }}" \
               -e OLLAMA_ORIGINS="*" \
               --name proxy-server \
               my-proxy
