@@ -3,8 +3,8 @@ name: Deploy to JCloud Server
 on:
   push:
     branches:
-      # - main
-      - develop
+       - main
+      # - develop
 
 jobs:
   deploy:
@@ -40,8 +40,8 @@ jobs:
             echo "=========================================="
             echo "📥 Pulling latest code..."
             echo "=========================================="
-            git fetch origin develop
-            git reset --hard origin/develop
+            git fetch origin main
+            git reset --hard origin/main
             
             echo "✅ Git pull completed. Latest commit:"
             git log -1 --oneline

@@ -9,6 +9,7 @@ import { setupAppFocus } from "../src/state/queryClient";
 import { AppHeaderLogo, AppHeaderNavigation, AppHeaderRight } from "../src/components/AppHeader";
 import ChatShortcutOverlay from "../src/components/ChatShortcutOverlay";
 import MobileTabBar from "../src/components/MobileTabBar";
+import { AnimatedTabBarButton } from "../src/components/AnimatedTabBarButton";
 
 const HeaderComponent = () => {
   const [dimensions, setDimensions] = useState(Dimensions.get("window"));
@@ -136,6 +137,7 @@ export default function RootLayout() {
               header: () => <CustomHeader />,
               // 웹에서는 항상 헤더 표시
               headerShown: Platform.OS === "web" ? true : undefined,
+              tabBarButton: (props) => <AnimatedTabBarButton {...props} />,
               tabBarActiveTintColor: colorScheme === "dark" ? "#fff" : "#111",
               tabBarStyle: Platform.OS === "web" ? { display: "none" } : { 
                 display: "flex", 
