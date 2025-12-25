@@ -16,11 +16,17 @@ jobs:
 
       - name: Deploy to Server via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          EXPO_PUBLIC_PROXY_URL: ${{ secrets.EXPO_PUBLIC_PROXY_URL }}
+          EXPO_PUBLIC_OLLAMA_MODEL: ${{ secrets.EXPO_PUBLIC_OLLAMA_MODEL }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+          PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
+          envs: EXPO_PUBLIC_PROXY_URL,EXPO_PUBLIC_OLLAMA_MODEL,OLLAMA_URL,PROJECT_PATH
           command_timeout: 30m
           script: |
             set -e  # 에러 발생 시 즉시 중단
@@ -28,7 +34,7 @@ jobs:
             echo "=========================================="
             echo "📁 Moving to project directory..."
             echo "=========================================="
-            cd ${{ secrets.PROJECT_PATH }}
+            cd $PROJECT_PATH
             pwd
             
             echo "=========================================="
@@ -60,9 +66,10 @@ jobs:
             echo "=========================================="
             echo "🚀 Building Frontend Server..."
             echo "=========================================="
+            # 환경변수를 직접 사용 ($변수명)
             sudo docker build --no-cache \
-              --build-arg EXPO_PUBLIC_PROXY_URL="${{ secrets.EXPO_PUBLIC_PROXY_URL }}" \
-              --build-arg EXPO_PUBLIC_OLLAMA_MODEL="${{ secrets.EXPO_PUBLIC_OLLAMA_MODEL }}" \
+              --build-arg EXPO_PUBLIC_PROXY_URL="$EXPO_PUBLIC_PROXY_URL" \
+              --build-arg EXPO_PUBLIC_OLLAMA_MODEL="$EXPO_PUBLIC_OLLAMA_MODEL" \
               -t my-frontend .
             
             echo "▶️ Starting frontend container..."
@@ -77,10 +84,11 @@ jobs:
             sudo docker build --no-cache -f Dockerfile.proxy -t my-proxy .
             
             echo "▶️ Starting proxy container..."
+            # 환경변수를 직접 사용 ($변수명)
             sudo docker run -d \
               --net=host \
               -e PORT=8080 \
-              -e OLLAMA_URL="${{ secrets.OLLAMA_URL }}" \
+              -e OLLAMA_URL="$OLLAMA_URL" \
               -e OLLAMA_ORIGINS="*" \
               --name proxy-server \
               my-proxy
