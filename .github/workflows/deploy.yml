@@ -58,7 +58,10 @@ jobs:
             echo "=========================================="
             echo "🚀 Building Frontend Server..."
             echo "=========================================="
-            sudo docker build --no-cache -t my-frontend .
+            sudo docker build --no-cache \
+              --build-arg EXPO_PUBLIC_PROXY_URL=${{ secrets.EXPO_PUBLIC_PROXY_URL }} \
+              --build-arg EXPO_PUBLIC_OLLAMA_MODEL=${{ secrets.EXPO_PUBLIC_OLLAMA_MODEL }} \
+              -t my-frontend .
             
             echo "▶️ Starting frontend container..."
             sudo docker run -d --net=host --name frontend-server my-frontend
