@@ -11,7 +11,6 @@ export const ALLOWED_TAGS = [
   "대학원",
   "취업",
   "공모전",
-  "봉사활동",
   "교내활동",
   "대외활동",
 ] as const;
@@ -27,7 +26,6 @@ export const TAG_COLORS: Record<string, { bg: string; text: string; border?: str
   "대학원": { bg: "#FFF3E0", text: "#E65100", border: "#FFCC80" },
   "취업": { bg: "#FFEBEE", text: "#C62828", border: "#EF9A9A" },
   "공모전": { bg: "#E1F5FE", text: "#0277BD", border: "#81D4FA" },
-  "봉사활동": { bg: "#F1F8E9", text: "#558B2F", border: "#AED581" },
   "교내활동": { bg: "#FCE4EC", text: "#C2185B", border: "#F48FB1" },
   "대외활동": { bg: "#E0F2F1", text: "#00695C", border: "#80CBC4" },
 };
@@ -59,8 +57,6 @@ function keywordToTags(text: string): AllowedTag[] {
   if (/(채용|인턴|취업|공채|경력|신입|recruit|모집공고|산학협력)/i.test(src)) out.push("취업");
   // 공모전
   if (/(공모전|해커톤|대회|콘테스트|챌린지)/i.test(src)) out.push("공모전");
-  // 봉사활동
-  if (/(봉사|자원봉사|봉사활동)/i.test(src)) out.push("봉사활동");
   // 대학원
   if (/(대학원|석사|박사|연구실|랩\b|seminar|세미나)/i.test(src)) out.push("대학원");
   // 수강
@@ -72,7 +68,7 @@ function keywordToTags(text: string): AllowedTag[] {
   // 교내활동
   if (/(멘토|멘티|TA)/i.test(src)) out.push("교내활동");
   // 대외활동
-  if (/(대외활동|봉사|자원봉사|봉사활동)/i.test(src)) out.push("대외활동");
+  if (/(대외활동)/i.test(src)) out.push("대외활동");
   
   return pickTopTags(out);
 }

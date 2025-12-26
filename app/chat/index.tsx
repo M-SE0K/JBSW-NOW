@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, memo } from "react";
+import React, { useEffect, useRef, useState, memo, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   View,
@@ -35,6 +35,18 @@ const ChatScreen = memo(() => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
+  const inputValueRef = useRef("");
+  const loadingRef = useRef(false);
+
+  // ref를 통해 최신 값 추적
+  useEffect(() => {
+    inputValueRef.current = input;
+  }, [input]);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
   const heroAnim = useRef(new Animated.Value(0)).current;
   const promptAnim = useRef(new Animated.Value(0)).current;
   const composerAnim = useRef(new Animated.Value(0)).current;
@@ -100,7 +112,7 @@ const ChatScreen = memo(() => {
     ]).start();
   }, [heroAnim, promptAnim, composerAnim]);
 
-  const send = async (preset?: string) => {
+  const send = useCallback(async (preset?: string) => {
     const query = (preset ?? input).trim();
     if (!query || loading) return;
 
@@ -125,7 +137,71 @@ const ChatScreen = memo(() => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [input, loading]);
+
+  // 웹에서 inputRef가 변경될 때 이벤트 리스너 추가 (백업용)
+  // onKeyPress가 작동하지 않는 경우를 대비
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let handler: ((e: KeyboardEvent) => void) | null = null;
+    
+    const setupListener = () => {
+      // 여러 방법으로 노드 찾기 시도
+      const node = (inputRef.current as any)?._node 
+        || (inputRef.current as any)?.node
+        || (inputRef.current as any)?.base
+        || (inputRef.current as any);
+      
+      // DOM 노드인지 확인 (textarea 또는 input)
+      const domNode = (node?.tagName === "TEXTAREA" || node?.tagName === "INPUT") ? node : null;
+      
+      if (!domNode) {
+        // 노드가 아직 준비되지 않았으면 재시도 (최대 10번)
+        let retryCount = 0;
+        const maxRetries = 10;
+        timeoutId = setTimeout(() => {
+          retryCount++;
+          if (retryCount < maxRetries) {
+            setupListener();
+          }
+        }, 100);
+        return;
+      }
+
+      handler = (e: KeyboardEvent) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          // ref를 통해 최신 상태 참조
+          const currentInput = inputValueRef.current;
+          const currentLoading = loadingRef.current;
+          if (currentInput.trim() && !currentLoading) {
+            send();
+          }
+        }
+      };
+      
+      domNode.addEventListener('keydown', handler, true);
+    };
+
+    setupListener();
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (handler) {
+        const node = (inputRef.current as any)?._node 
+          || (inputRef.current as any)?.node
+          || (inputRef.current as any)?.base
+          || (inputRef.current as any);
+        const domNode = (node?.tagName === "TEXTAREA" || node?.tagName === "INPUT") ? node : null;
+        if (domNode) {
+          domNode.removeEventListener('keydown', handler, true);
+        }
+      }
+    };
+  }, [send]);
 
   return (
     <PageTransition isVisible={isVisible} direction={direction}>
@@ -224,6 +300,9 @@ const ChatScreen = memo(() => {
                           fontSize: 15,
                           lineHeight: 22,
                           fontFamily: Platform.OS === "ios" ? "-apple-system" : "sans-serif",
+                          width: "100%",
+                          flexShrink: 1,
+                          overflow: "hidden",
                         },
                         paragraph: {
                           marginTop: 0,
@@ -382,14 +461,31 @@ const ChatScreen = memo(() => {
             ]}
           >
             <TextInput
+              ref={inputRef}
               value={input}
               onChangeText={setInput}
               placeholder="무엇이 궁금한가요?"
               placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
               style={[styles.input, { color: isDark ? "#f1f5f9" : "#0f172a" }]}
-              onSubmitEditing={() => send()}
               editable={!loading}
               multiline
+              blurOnSubmit={false}
+              returnKeyType="send"
+              onSubmitEditing={() => {
+                if (input.trim() && !loading) {
+                  send();
+                }
+              }}
+              onKeyPress={(e) => {
+                const key = e.nativeEvent.key;
+                if (key === "Enter") {
+                  // 모든 플랫폼에서 Enter 키로 전송
+                  // 웹에서는 Shift+Enter 체크가 불가능하지만, 일반적으로 Enter만 누르면 전송
+                  if (input.trim() && !loading) {
+                    send();
+                  }
+                }
+              }}
             />
             <Pressable
               onPress={() => send()}
@@ -484,7 +580,8 @@ const styles = StyleSheet.create({
   messageBubble: {
     padding: 14,
     borderRadius: 18,
-    maxWidth: "85%",
+    maxWidth: "100%",
+    flexShrink: 1,
     borderWidth: 1,
   },
   messageUser: {
@@ -566,3 +663,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   } as any,
 });
+
