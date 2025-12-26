@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { hydrateFavorites, clearFavorites } from "../../src/services/favorites";
-import { getCurrentUser } from "../../src/services/auth";
 import { subscribeAuth, logout, getCurrentUser } from "../../src/services/auth";
 import { User } from "firebase/auth";
 
