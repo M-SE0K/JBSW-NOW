@@ -72,29 +72,43 @@ export default function LoginScreen() {
   console.log("[AUTH] iOS Client ID configured for Development Build");
   }
 
-  const getStoredRedirect = () => {
-    if (typeof window === "undefined") return null;
+const hasWebStorage =
+  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+
+const getStoredRedirect = () => {
+  if (!hasWebStorage) return null;
+  try {
     return window.localStorage.getItem(REDIRECT_STORAGE_KEY);
-  };
+  } catch {
+    return null;
+  }
+};
 
-  const setStoredRedirect = (path: string) => {
-    if (typeof window === "undefined") return;
+const setStoredRedirect = (path: string) => {
+  if (!hasWebStorage) return;
+  try {
     window.localStorage.setItem(REDIRECT_STORAGE_KEY, path);
-  };
+  } catch {}
+};
 
-  const clearStoredRedirect = () => {
-    if (typeof window === "undefined") return;
+const clearStoredRedirect = () => {
+  if (!hasWebStorage) return;
+  try {
     window.localStorage.removeItem(REDIRECT_STORAGE_KEY);
-  };
+  } catch {}
+};
 
   const resolveRedirectPath = () => {
+    // 네이티브(iOS/Android)는 항상 홈으로 리디렉트
+    if (Platform.OS !== "web") return "/";
+
     const stored = isWeb ? getStoredRedirect() : null;
     return redirectParam || stored || "/";
   };
 
   // 웹에서 리디렉트 파라미터를 로컬스토리지에 저장 (다른 계정 사용 시 URL 파라미터 손실 방지)
   useEffect(() => {
-    if (isWeb) {
+    if (isWeb && hasWebStorage) {
       setStoredRedirect(redirectParam || "/");
     }
   }, [isWeb, redirectParam]);
