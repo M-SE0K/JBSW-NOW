@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, StyleSheet, Pressable, ScrollView, Switch, Alert, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ensureUserId, getActiveUserIdSync, hydrateFavorites, clearFavorites } from "../../src/services/favorites";
+import { hydrateFavorites, clearFavorites } from "../../src/services/favorites";
 import { subscribeAuth, logout, getCurrentUser } from "../../src/services/auth";
 import { User } from "firebase/auth";
+import { PageTransition } from "../../src/components/PageTransition";
+import { usePageTransition } from "../../src/hooks/usePageTransition";
 
 // 플랫폼별 Alert 함수
 const showAlert = (
@@ -34,9 +36,10 @@ const showAlert = (
   }
 };
 
-export default function SettingsScreen() {
+const SettingsScreen = memo(() => {
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const { isVisible, direction } = usePageTransition();
   
   // 설정 상태
   const [darkMode, setDarkMode] = useState(colorScheme === "dark");
@@ -102,27 +105,28 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colorScheme === "dark" ? "#000" : "#fff" }]}>
-      {/* 헤더 */}
-      <View style={[styles.header, { backgroundColor: colorScheme === "dark" ? "#000" : "#fff" }]}>
-        <View style={styles.headerTop}>
-          <Pressable 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color={colorScheme === "dark" ? "#fff" : "#000"} />
-          </Pressable>
-          
-          <View style={styles.placeholder} />
+    <PageTransition isVisible={isVisible} direction={direction}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colorScheme === "dark" ? "#000" : "#fff" }]}>
+        {/* 헤더 */}
+        <View style={[styles.header, { backgroundColor: colorScheme === "dark" ? "#000" : "#fff" }]}>
+          <View style={styles.headerTop}>
+            <Pressable 
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="chevron-back" size={24} color={colorScheme === "dark" ? "#fff" : "#000"} />
+            </Pressable>
+            
+            <View style={styles.placeholder} />
+          </View>
+
+          <View style={styles.titleContainer}>
+            <Text style={[styles.title, { color: colorScheme === "dark" ? "#fff" : "#000" }]}>설정</Text>
+          </View>
         </View>
 
-        <View style={styles.titleContainer}>
-          <Text style={[styles.title, { color: colorScheme === "dark" ? "#fff" : "#000" }]}>설정</Text>
-        </View>
-      </View>
-
-      {/* 설정 목록 */}
-      <ScrollView style={styles.content}>
+        {/* 설정 목록 */}
+        <ScrollView style={styles.content}>
         <SectionHeader title="계정" />
         {user ? (
           <SettingItem
@@ -198,11 +202,12 @@ export default function SettingsScreen() {
               console.log("[SETTINGS] cleared recent searches", { before: recentBefore.length, after: 0, items: recentBefore });
 
               // 즐겨찾기 삭제(현재 사용자)
-              await ensureUserId();
-              const uid = getActiveUserIdSync();
-              await clearFavorites();
+              const user = getCurrentUser();
+              if (user) {
+                await clearFavorites();
                 await hydrateFavorites();
-              console.log("[SETTINGS] cleared favorites", { userId: uid });
+                console.log("[SETTINGS] cleared favorites", { userId: user.uid });
+              }
               showAlert("완료", "캐시 데이터가 삭제되었습니다.");
             } catch (e) {
               console.warn("[SETTINGS] clear cache error", e);
@@ -244,9 +249,14 @@ export default function SettingsScreen() {
           showArrow={true}
         />
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </PageTransition>
   );
-}
+});
+
+SettingsScreen.displayName = "SettingsScreen";
+
+export default SettingsScreen;
 
 const styles = StyleSheet.create({
   container: {

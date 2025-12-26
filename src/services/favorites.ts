@@ -1,72 +1,8 @@
-import { Platform } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, auth } from "../db/firebase";
 
-const KEY_ACTIVE_USER = "active_user_id_v1";
-const KEY_FAV_PREFIX = "favorites_v1_"; // favorites_v1_{userId}
-
-let activeUserId: string | null = null;
 let inMemoryFavorites = new Set<string>();
 let listeners = new Set<() => void>();
-
-// 플랫폼별 스토리지 추상화
-const storage = {
-  async getItem(key: string): Promise<string | null> {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      return window.localStorage.getItem(key);
-    }
-    if (Platform.OS === 'web') {
-      // SSR 환경에서는 null 반환
-      return null;
-    }
-    return AsyncStorage.getItem(key);
-  },
-  async setItem(key: string, value: string): Promise<void> {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.localStorage.setItem(key, value);
-      return;
-    }
-    if (Platform.OS === 'web') {
-      // SSR 환경에서는 무시
-      return;
-    }
-    await AsyncStorage.setItem(key, value);
-  },
-  async removeItem(key: string): Promise<void> {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.localStorage.removeItem(key);
-      return;
-    }
-    if (Platform.OS === 'web') {
-      // SSR 환경에서는 무시
-      return;
-    }
-    await AsyncStorage.removeItem(key);
-  }
-};
-
-export async function ensureUserId(): Promise<string> {
-  if (activeUserId) return activeUserId;
-  let uid = await storage.getItem(KEY_ACTIVE_USER);
-  if (!uid) {
-    uid = generateUuid();
-    await storage.setItem(KEY_ACTIVE_USER, uid);
-  }
-  activeUserId = uid;
-  await hydrateFavorites();
-  return uid;
-}
-
-export function getActiveUserIdSync(): string | null {
-  return activeUserId;
-}
-
-export async function switchUser(userId: string): Promise<void> {
-  activeUserId = userId;
-  await storage.setItem(KEY_ACTIVE_USER, userId);
-  await hydrateFavorites();
-}
 
 export function subscribe(listener: () => void): () => void {
   listeners.add(listener);
@@ -79,108 +15,137 @@ function notify() {
   });
 }
 
+/**
+ * 현재 로그인한 사용자의 즐겨찾기를 Firestore에서 로드
+ */
 export async function hydrateFavorites(): Promise<void> {
-  const uid = activeUserId || (await ensureUserId());
-  
-  // 1. 로컬 캐시 먼저 로드 (빠른 UI 반응)
-  const key = KEY_FAV_PREFIX + uid;
+  const user = auth.currentUser;
+  if (!user) {
+    inMemoryFavorites = new Set();
+    notify();
+    return;
+  }
+
   try {
-    const raw = await storage.getItem(key);
-    const arr = raw ? (JSON.parse(raw) as string[]) : [];
-    inMemoryFavorites = new Set(arr);
-  } catch {
+    const userDocRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userDocRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const favs = (data.favorites as string[]) || [];
+      inMemoryFavorites = new Set(favs);
+    } else {
+      inMemoryFavorites = new Set();
+    }
+  } catch (e) {
+    console.error("[FAV] hydrate error", e);
     inMemoryFavorites = new Set();
   }
-  notify(); // 로컬 데이터로 우선 렌더링
-
-  // 2. 로그인된 유저라면 Firestore에서 동기화
-  if (auth.currentUser && auth.currentUser.uid === uid) {
-    try {
-      const userDocRef = doc(db, "users", uid);
-      const snap = await getDoc(userDocRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        const cloudFavs = (data.favorites as string[]) || [];
-        
-        // 로컬과 클라우드 병합 (합집합)
-        const merged = new Set([...inMemoryFavorites, ...cloudFavs]);
-        
-        if (merged.size !== inMemoryFavorites.size) {
-          inMemoryFavorites = merged;
-          await persistFavorites(true); // 병합된 내용 다시 저장 (로컬+클라우드)
+  
   notify();
-        }
-      }
-    } catch (e) {
-      }
-  }
 }
 
-export async function persistFavorites(skipCloud: boolean = false): Promise<void> {
-  if (!activeUserId) await ensureUserId();
-  const uid = activeUserId!;
-  const key = KEY_FAV_PREFIX + uid;
+/**
+ * 현재 로그인한 사용자의 즐겨찾기를 Firestore에 저장
+ */
+export async function persistFavorites(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) {
+    console.warn("[FAV] Cannot persist favorites: user not logged in");
+    return;
+  }
+
   const arr = [...inMemoryFavorites];
   
-  // 1. 로컬 저장
-  await storage.setItem(key, JSON.stringify(arr));
-
-  // 2. 클라우드 저장 (로그인 유저인 경우)
-  if (!skipCloud && auth.currentUser && auth.currentUser.uid === uid) {
-    try {
-      const userDocRef = doc(db, "users", uid);
-      await setDoc(userDocRef, { favorites: arr }, { merge: true });
-    } catch (e) {
-      console.error("[FAV] persist cloud error", e);
-    }
+  try {
+    const userDocRef = doc(db, "users", user.uid);
+    await setDoc(userDocRef, { favorites: arr }, { merge: true });
+  } catch (e) {
+    console.error("[FAV] persist error", e);
+    throw e;
   }
 }
 
+/**
+ * 현재 로그인한 사용자의 즐겨찾기 목록 반환
+ */
 export function getFavorites(): string[] {
   return [...inMemoryFavorites];
 }
 
+/**
+ * 특정 ID가 즐겨찾기에 있는지 확인
+ */
 export function isFavorite(id: string): boolean {
   return inMemoryFavorites.has(id);
 }
 
+/**
+ * 즐겨찾기 토글 (추가/제거)
+ */
 export async function toggleFavorite(id: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User must be logged in to toggle favorites");
+  }
+
   const wasFav = inMemoryFavorites.has(id);
-  if (wasFav) inMemoryFavorites.delete(id);
-  else inMemoryFavorites.add(id);
+  if (wasFav) {
+    inMemoryFavorites.delete(id);
+  } else {
+    inMemoryFavorites.add(id);
+  }
   
-  notify(); // 즉시 반영
-  await persistFavorites(); // 저장
+  notify(); // 즉시 UI 반영
+  await persistFavorites(); // Firestore에 저장
 }
 
+/**
+ * 모든 즐겨찾기 삭제
+ */
 export async function clearFavorites(): Promise<void> {
-  if (!activeUserId) await ensureUserId();
-  const uid = activeUserId!;
-  const key = KEY_FAV_PREFIX + uid;
-  
-  // 메모리 초기화
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User must be logged in to clear favorites");
+  }
+
   inMemoryFavorites.clear();
   
-  // 로컬 저장소 삭제
-  await storage.removeItem(key);
-  
-  // 클라우드 삭제 (로그인 유저인 경우)
-  if (auth.currentUser && auth.currentUser.uid === uid) {
-    try {
-      const userDocRef = doc(db, "users", uid);
-      await setDoc(userDocRef, { favorites: [] }, { merge: true });
-    } catch (e) {
-      console.error("[FAV] clear cloud error", e);
-    }
+  try {
+    const userDocRef = doc(db, "users", user.uid);
+    await setDoc(userDocRef, { favorites: [] }, { merge: true });
+  } catch (e) {
+    console.error("[FAV] clear error", e);
+    throw e;
   }
   
   notify();
 }
 
-function generateUuid(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+/**
+ * 사용자 전환 시 즐겨찾기 새로고침
+ * @deprecated 이제 인증이 필수이므로 switchUser는 단순히 새로고침만 수행
+ */
+export async function switchUser(userId: string): Promise<void> {
+  await hydrateFavorites();
+}
+
+/**
+ * 현재 사용자 ID 확인 (인증 필수)
+ * @deprecated auth.currentUser.uid를 직접 사용하세요
+ */
+export async function ensureUserId(): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User must be logged in");
+  }
+  await hydrateFavorites();
+  return user.uid;
+}
+
+/**
+ * 현재 사용자 ID 동기 반환 (인증 필수)
+ * @deprecated auth.currentUser?.uid를 직접 사용하세요
+ */
+export function getActiveUserIdSync(): string | null {
+  return auth.currentUser?.uid ?? null;
 }

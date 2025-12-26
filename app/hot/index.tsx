@@ -8,7 +8,7 @@ import type { Event } from "../../src/types";
 import { fetchRecentHotTopWithinDays, getHotClickCounts } from "../../src/services/hot";
 import { fetchNoticesCleaned, type Notice } from "../../src/api/eventsFirestore";
 import { normalize } from "../../src/services/search";
-import { subscribe as subscribeFavorites, ensureUserId as ensureFavUser } from "../../src/services/favorites";
+import { subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
 import { enrichEventsWithTags } from "../../src/services/tags";
 import { PageTransition } from "../../src/components/PageTransition";
 import { usePageTransition } from "../../src/hooks/usePageTransition";
@@ -183,7 +183,7 @@ const HotScreen = memo(() => {
   }, [allEvents, selectedTag]);
 
   useEffect(() => {
-    ensureFavUser();
+    hydrateFavs();
     const unsub = subscribeFavorites(() => setFavTick((v) => v + 1));
     return () => unsub();
   }, []);

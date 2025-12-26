@@ -124,8 +124,8 @@ export default function LoginScreen() {
       
       console.log("[AUTH] Firebase login success:", email);
       
-      // 리다이렉트 파라미터가 있으면 해당 페이지로, 없으면 설정 페이지로
-      const redirectPath = params.redirect ? decodeURIComponent(params.redirect) : "/settings";
+      // 리다이렉트 파라미터가 있으면 해당 페이지로, 없으면 메인 페이지로
+      const redirectPath = params.redirect ? decodeURIComponent(params.redirect) : "/";
       router.replace(redirectPath as any);
     } catch (e: any) {
       console.error("[AUTH] Firebase credential error:", e);
@@ -146,8 +146,8 @@ export default function LoginScreen() {
     
     console.log("[AUTH] Login success:", email);
     
-    // 리다이렉트 파라미터가 있으면 해당 페이지로, 없으면 설정 페이지로
-    const redirectPath = params.redirect ? decodeURIComponent(params.redirect) : "/settings";
+    // 리다이렉트 파라미터가 있으면 해당 페이지로, 없으면 메인 페이지로
+    const redirectPath = params.redirect ? decodeURIComponent(params.redirect) : "/";
     router.replace(redirectPath as any);
   };
 

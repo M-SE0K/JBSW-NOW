@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, useColorScheme, TouchableOpacity, Linking, Image, StyleSheet, Platform, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { isFavorite, subscribe, ensureUserId, toggleFavorite } from "../services/favorites";
+import { isFavorite, subscribe, toggleFavorite } from "../services/favorites";
 import { incrementHotClick } from "../services/hot";
 import { cleanCrawledText } from "../utils/textCleaner";
 import { Event } from "../types";
@@ -20,7 +20,6 @@ export const EventCard = ({ event, onPress }: Props) => {
   const bgColorAnim = React.useRef(new Animated.Value(0)).current;
   
   React.useEffect(() => {
-    ensureUserId();
     setFav(isFavorite(event.id));
     const unsub = subscribe(() => setFav(isFavorite(event.id)));
     return unsub;
@@ -188,9 +187,19 @@ export const EventCard = ({ event, onPress }: Props) => {
             </View>
           )}
           <View style={styles.rightActions}>
-            {dateStr && (
-              <Text style={[styles.date, { color: scheme === "dark" ? "#94A3B8" : "#9CA3AF" }]}>{dateStr}</Text>
-            )}
+            <View style={styles.metadataRow}>
+              {hotClickCount !== null && hotClickCount > 0 && (
+                <View style={[styles.viewCountBadge, { backgroundColor: scheme === "dark" ? "rgba(239, 68, 68, 0.15)" : "#FEE2E2" }]}>
+                  <Ionicons name="eye" size={12} color={scheme === "dark" ? "#FCA5A5" : "#DC2626"} />
+                  <Text style={[styles.viewCountText, { color: scheme === "dark" ? "#FCA5A5" : "#DC2626" }]}>
+                    {hotClickCount >= 1000 ? `${(hotClickCount / 1000).toFixed(1)}k` : hotClickCount}
+                  </Text>
+                </View>
+              )}
+              {dateStr && (
+                <Text style={[styles.date, { color: scheme === "dark" ? "#94A3B8" : "#9CA3AF" }]}>{dateStr}</Text>
+              )}
+            </View>
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation();
@@ -342,6 +351,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginLeft: "auto",
+  },
+  metadataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  viewCountBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 4,
+  },
+  viewCountText: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   date: {
     fontSize: 12,
