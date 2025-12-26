@@ -10,6 +10,13 @@ import { subscribeAuth, logout, getCurrentUser } from "../../src/services/auth";
 import { User } from "firebase/auth";
 import { PageTransition } from "../../src/components/PageTransition";
 import { usePageTransition } from "../../src/hooks/usePageTransition";
+import { 
+  getInterestedTags, 
+  toggleInterestedTag, 
+  hydrateInterestedTags,
+  subscribe as subscribeInterestedTags 
+} from "../../src/services/interestedTags";
+import { ALLOWED_TAGS, TAG_COLORS, type AllowedTag } from "../../src/services/tags";
 
 // 플랫폼별 Alert 함수
 const showAlert = (
@@ -46,10 +53,26 @@ const SettingsScreen = memo(() => {
   const [notifications, setNotifications] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [user, setUser] = useState<User | null>(getCurrentUser());
+  const [interestedTags, setInterestedTags] = useState<AllowedTag[]>([]);
 
   useEffect(() => {
-    return subscribeAuth(setUser);
+    const unsubscribe = subscribeAuth(setUser);
+    return unsubscribe;
   }, []);
+
+  // 관심 태그 로드 및 구독
+  useEffect(() => {
+    if (user) {
+      hydrateInterestedTags();
+      const unsubscribe = subscribeInterestedTags(() => {
+        setInterestedTags(getInterestedTags());
+      });
+      setInterestedTags(getInterestedTags());
+      return unsubscribe;
+    } else {
+      setInterestedTags([]);
+    }
+  }, [user]);
 
   const SettingItem = ({ 
     title, 
@@ -186,6 +209,61 @@ const SettingsScreen = memo(() => {
           onPress={() => router.push("/notification/settings")}
           showArrow={true}
         />
+
+        <SectionHeader title="관심 분야" />
+        <View style={styles.tagsSection}>
+          <Text style={[styles.tagsSectionTitle, { color: colorScheme === "dark" ? "#F1F5F9" : "#111827" }]}>
+            관심 태그를 선택하면 관련 게시물 알림을 받을 수 있습니다
+          </Text>
+          <View style={styles.tagsContainer}>
+            {ALLOWED_TAGS.map((tag) => {
+              const isSelected = interestedTags.includes(tag);
+              const tagColor = TAG_COLORS[tag] || TAG_COLORS["일반"];
+              return (
+                <Pressable
+                  key={tag}
+                  onPress={async () => {
+                    try {
+                      await toggleInterestedTag(tag);
+                    } catch (e) {
+                      console.error("[SETTINGS] Failed to toggle tag", e);
+                    }
+                  }}
+                  style={[
+                    styles.tagChip,
+                    {
+                      backgroundColor: isSelected
+                        ? (colorScheme === "dark" ? "#6466E9" : "#6466E9")
+                        : (colorScheme === "dark" 
+                            ? `${tagColor.bg}30` 
+                            : tagColor.bg),
+                      borderWidth: isSelected ? 0 : 1,
+                      borderColor: isSelected 
+                        ? "transparent"
+                        : (colorScheme === "dark"
+                            ? `${tagColor.border || tagColor.text}40`
+                            : (tagColor.border || tagColor.text)),
+                    }
+                  ]}
+                >
+                  <Text style={[
+                    styles.tagChipText,
+                    { 
+                      color: isSelected
+                        ? "#FFFFFF"
+                        : (colorScheme === "dark" ? tagColor.text : tagColor.text)
+                    }
+                  ]}>
+                    {tag}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
         <SectionHeader title="데이터 관리" />
         <SettingItem
@@ -339,5 +417,33 @@ const styles = StyleSheet.create({
   settingRight: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  tagsSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  tagsSectionTitle: {
+    fontSize: 14,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tagChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    minHeight: 36,
+  },
+  tagChipText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

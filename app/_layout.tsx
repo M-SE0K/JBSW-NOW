@@ -284,6 +284,7 @@ export default function RootLayout() {
               }}
             />
             <Tabs.Screen name="test/firebase" options={{ href: null }} />
+            <Tabs.Screen name="test/notifications" options={{ href: null }} />
           </Tabs>
         </QueryProvider>
         {Platform.OS === "web" && <ChatShortcutOverlay />}
