@@ -78,6 +78,9 @@ npm run setup
 ### 실행 방법
 
 ```bash
+# 로컬 전용 프록시
+npm run proxylocal
+
 npx expo start -c
 # i : IOS 시뮬레이터 실행
 # a : Android 애뮬레이터 실행
