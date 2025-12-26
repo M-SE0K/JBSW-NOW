@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Svg, { Circle, Path, Defs, LinearGradient, Stop } from "react-native-svg";
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential, Auth } from "firebase/auth";
 import { auth as firebaseAuth } from "../../src/db/firebase";
+import { getCurrentUser, subscribeAuth } from "../../src/services/auth";
 
 // 타입 안전성을 위해 auth를 명시적으로 타입 지정
 const auth: Auth = firebaseAuth;
@@ -25,6 +26,8 @@ import * as WebBrowser from "expo-web-browser";
 
 // iOS에서 AuthSession 완료 처리
 WebBrowser.maybeCompleteAuthSession();
+
+const REDIRECT_STORAGE_KEY = "login_redirect_path";
 
 // 플랫폼별 Alert 함수
 const showAlert = (title: string, message: string) => {
@@ -44,6 +47,8 @@ export default function LoginScreen() {
   const [dimensions, setDimensions] = useState(Dimensions.get("window"));
   const isWeb = Platform.OS === "web";
   const isLargeScreen = isWeb && dimensions.width >= 1024;
+  const redirectParam = params.redirect ? decodeURIComponent(params.redirect) : "/";
+  const [user, setUser] = useState(() => getCurrentUser());
 
   // iOS/Android용 Google Auth 설정
   // 웹에서는 Firebase signInWithPopup을 직접 사용하므로 이 hook은 사용하지 않음
@@ -66,6 +71,48 @@ export default function LoginScreen() {
   if (Platform.OS !== 'web') {
   console.log("[AUTH] iOS Client ID configured for Development Build");
   }
+
+  const getStoredRedirect = () => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(REDIRECT_STORAGE_KEY);
+  };
+
+  const setStoredRedirect = (path: string) => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(REDIRECT_STORAGE_KEY, path);
+  };
+
+  const clearStoredRedirect = () => {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(REDIRECT_STORAGE_KEY);
+  };
+
+  const resolveRedirectPath = () => {
+    const stored = isWeb ? getStoredRedirect() : null;
+    return redirectParam || stored || "/";
+  };
+
+  // 웹에서 리디렉트 파라미터를 로컬스토리지에 저장 (다른 계정 사용 시 URL 파라미터 손실 방지)
+  useEffect(() => {
+    if (isWeb) {
+      setStoredRedirect(redirectParam || "/");
+    }
+  }, [isWeb, redirectParam]);
+
+  // 이미 로그인된 경우 즉시 리다이렉트
+  useEffect(() => {
+    if (user) {
+      const path = resolveRedirectPath();
+      clearStoredRedirect();
+      router.replace(path as any);
+    }
+  }, [user]);
+
+  // auth 상태 구독
+  useEffect(() => {
+    const unsub = subscribeAuth(setUser);
+    return () => unsub();
+  }, []);
 
   // iOS: Google 로그인 응답 처리
   useEffect(() => {
@@ -125,7 +172,8 @@ export default function LoginScreen() {
       console.log("[AUTH] Firebase login success:", email);
       
       // 리다이렉트 파라미터가 있으면 해당 페이지로, 없으면 메인 페이지로
-      const redirectPath = params.redirect ? decodeURIComponent(params.redirect) : "/";
+      const redirectPath = resolveRedirectPath();
+      clearStoredRedirect();
       router.replace(redirectPath as any);
     } catch (e: any) {
       console.error("[AUTH] Firebase credential error:", e);
@@ -147,7 +195,8 @@ export default function LoginScreen() {
     console.log("[AUTH] Login success:", email);
     
     // 리다이렉트 파라미터가 있으면 해당 페이지로, 없으면 메인 페이지로
-    const redirectPath = params.redirect ? decodeURIComponent(params.redirect) : "/";
+    const redirectPath = resolveRedirectPath();
+    clearStoredRedirect();
     router.replace(redirectPath as any);
   };
 
@@ -160,12 +209,14 @@ export default function LoginScreen() {
         // 웹: Firebase signInWithPopup 사용
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
+        setStoredRedirect(redirectParam || "/");
         
         try {
           const result = await signInWithPopup(auth as any, provider);
           await handleAuthSuccess(result.user);
         } catch (popupError: any) {
           if (popupError.code === 'auth/popup-blocked') {
+            setStoredRedirect(redirectParam || "/");
             await signInWithRedirect(auth as any, provider);
           } else if (popupError.code === 'auth/popup-closed-by-user') {
             // 사용자가 팝업을 닫음 - 무시
