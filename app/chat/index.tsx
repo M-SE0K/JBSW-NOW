@@ -300,6 +300,9 @@ const ChatScreen = memo(() => {
                           fontSize: 15,
                           lineHeight: 22,
                           fontFamily: Platform.OS === "ios" ? "-apple-system" : "sans-serif",
+                          width: "100%",
+                          flexShrink: 1,
+                          overflow: "hidden",
                         },
                         paragraph: {
                           marginTop: 0,
@@ -577,7 +580,7 @@ const styles = StyleSheet.create({
   messageBubble: {
     padding: 14,
     borderRadius: 18,
-    maxWidth: "85%",
+    maxWidth: "100%",
     flexShrink: 1,
     borderWidth: 1,
   },
