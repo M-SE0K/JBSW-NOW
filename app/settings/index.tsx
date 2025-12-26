@@ -1,9 +1,8 @@
-import React, { useState, useEffect, memo } from "react";
+import React, { useState, useEffect, memo, useRef } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, StyleSheet, Pressable, ScrollView, Switch, Alert, Platform } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Switch, Alert, Platform, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { hydrateFavorites, clearFavorites } from "../../src/services/favorites";
 import { subscribeAuth, logout, getCurrentUser } from "../../src/services/auth";
@@ -45,15 +44,24 @@ const showAlert = (
 
 const SettingsScreen = memo(() => {
   const router = useRouter();
-  const colorScheme = useColorScheme();
   const { isVisible, direction } = usePageTransition();
   
   // 설정 상태
-  const [darkMode, setDarkMode] = useState(colorScheme === "dark");
   const [notifications, setNotifications] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [user, setUser] = useState<User | null>(getCurrentUser());
   const [interestedTags, setInterestedTags] = useState<AllowedTag[]>([]);
+  const [modalType, setModalType] = useState<"feedback" | "dev" | null>(null);
+
+  const modalAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(modalAnim, {
+      toValue: modalType ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [modalType, modalAnim]);
 
   useEffect(() => {
     const unsubscribe = subscribeAuth(setUser);
@@ -92,17 +100,17 @@ const SettingsScreen = memo(() => {
     showArrow?: boolean;
   }) => (
     <Pressable 
-      style={[styles.settingItem, { backgroundColor: colorScheme === "dark" ? "#1a1a1a" : "#fff" }]}
+      style={[styles.settingItem, { backgroundColor: "#fff" }]}
       onPress={onPress}
       disabled={!onPress}
     >
       <View style={styles.settingLeft}>
-        <View style={[styles.iconContainer, { backgroundColor: colorScheme === "dark" ? "#333" : "#f0f0f0" }]}>
-          <Ionicons name={icon as any} size={20} color={colorScheme === "dark" ? "#fff" : "#666"} />
+        <View style={[styles.iconContainer, { backgroundColor: "#f0f0f0" }]}>
+          <Ionicons name={icon as any} size={20} color="#666" />
         </View>
         <View style={styles.textContainer}>
-          <Text style={[styles.settingTitle, { color: colorScheme === "dark" ? "#fff" : "#000" }]}>{title}</Text>
-          {subtitle && <Text style={[styles.settingSubtitle, { color: colorScheme === "dark" ? "#999" : "#666" }]}>{subtitle}</Text>}
+          <Text style={[styles.settingTitle, { color: "#000" }]}>{title}</Text>
+          {subtitle && <Text style={[styles.settingSubtitle, { color: "#666" }]}>{subtitle}</Text>}
         </View>
       </View>
       <View style={styles.settingRight}>
@@ -115,36 +123,79 @@ const SettingsScreen = memo(() => {
           />
         )}
         {showArrow && (
-          <Ionicons name="chevron-forward" size={20} color={colorScheme === "dark" ? "#999" : "#666"} />
+          <Ionicons name="chevron-forward" size={20} color="#666" />
         )}
       </View>
     </Pressable>
   );
 
   const SectionHeader = ({ title }: { title: string }) => (
-    <View style={[styles.sectionHeader, { backgroundColor: colorScheme === "dark" ? "#111" : "#f8f8f8" }]}>
-      <Text style={[styles.sectionTitle, { color: colorScheme === "dark" ? "#999" : "#666" }]}>{title}</Text>
+    <View style={[styles.sectionHeader, { backgroundColor: "#f8f8f8" }]}>
+      <Text style={[styles.sectionTitle, { color: "#666" }]}>{title}</Text>
     </View>
   );
 
+  const renderModal = () => {
+    if (!modalType) return null;
+    const isFeedback = modalType === "feedback";
+
+    return (
+      <Pressable style={styles.modalOverlay} onPress={() => setModalType(null)}>
+        <Animated.View
+          style={[
+            styles.modalCard,
+            {
+              opacity: modalAnim,
+              transform: [
+                {
+                  translateY: modalAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [20, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.modalTitle}>{isFeedback ? "피드백 보내기" : "개발자 정보"}</Text>
+          {isFeedback ? (
+            <>
+              <Text style={styles.modalText}>문의사항은 아래 이메일로 보내주세요.</Text>
+              <Text style={styles.modalHighlight}>권민석 · seg7577@jbnu.ac.kr</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.modalText}>권민석 · 전북대학교 컴퓨터공학부 3학년 재학</Text>
+              <Text style={styles.modalHighlight}>seg7577@jbnu.ac.kr</Text>
+              <Text style={styles.modalHighlight}>GitHub: https://github.com/https://github.com/M-SE0K/JBSW-NOW.git</Text>
+            </>
+          )}
+          <Pressable style={styles.modalButton} onPress={() => setModalType(null)}>
+            <Text style={styles.modalButtonText}>닫기</Text>
+          </Pressable>
+        </Animated.View>
+      </Pressable>
+    );
+  };
+
   return (
     <PageTransition isVisible={isVisible} direction={direction}>
-      <SafeAreaView style={[styles.container, { backgroundColor: colorScheme === "dark" ? "#000" : "#fff" }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: "#fff" }]}>
         {/* 헤더 */}
-        <View style={[styles.header, { backgroundColor: colorScheme === "dark" ? "#000" : "#fff" }]}>
+        <View style={[styles.header, { backgroundColor: "#fff" }]}>
           <View style={styles.headerTop}>
             <Pressable 
               style={styles.backButton}
               onPress={() => router.back()}
             >
-              <Ionicons name="chevron-back" size={24} color={colorScheme === "dark" ? "#fff" : "#000"} />
+              <Ionicons name="chevron-back" size={24} color="#000" />
             </Pressable>
             
             <View style={styles.placeholder} />
           </View>
 
           <View style={styles.titleContainer}>
-            <Text style={[styles.title, { color: colorScheme === "dark" ? "#fff" : "#000" }]}>설정</Text>
+            <Text style={[styles.title, { color: "#000" }]}>설정</Text>
           </View>
         </View>
 
@@ -187,13 +238,6 @@ const SettingsScreen = memo(() => {
 
         <SectionHeader title="일반" />
         <SettingItem
-          title="다크 모드"
-          subtitle="어두운 테마 사용"
-          value={darkMode}
-          onValueChange={setDarkMode}
-          icon="moon-outline"
-        />
-        <SettingItem
           title="자동 새로고침"
           subtitle="앱 실행 시 자동으로 새 소식 불러오기"
           value={autoRefresh}
@@ -212,7 +256,7 @@ const SettingsScreen = memo(() => {
 
         <SectionHeader title="관심 분야" />
         <View style={styles.tagsSection}>
-          <Text style={[styles.tagsSectionTitle, { color: colorScheme === "dark" ? "#F1F5F9" : "#111827" }]}>
+          <Text style={[styles.tagsSectionTitle, { color: "#111827" }]}>
             관심 태그를 선택하면 관련 게시물 알림을 받을 수 있습니다
           </Text>
           <View style={styles.tagsContainer}>
@@ -232,26 +276,16 @@ const SettingsScreen = memo(() => {
                   style={[
                     styles.tagChip,
                     {
-                      backgroundColor: isSelected
-                        ? (colorScheme === "dark" ? "#6466E9" : "#6466E9")
-                        : (colorScheme === "dark" 
-                            ? `${tagColor.bg}30` 
-                            : tagColor.bg),
+                      backgroundColor: isSelected ? "#6466E9" : tagColor.bg,
                       borderWidth: isSelected ? 0 : 1,
-                      borderColor: isSelected 
-                        ? "transparent"
-                        : (colorScheme === "dark"
-                            ? `${tagColor.border || tagColor.text}40`
-                            : (tagColor.border || tagColor.text)),
+                      borderColor: isSelected ? "transparent" : (tagColor.border || tagColor.text),
                     }
                   ]}
                 >
                   <Text style={[
                     styles.tagChipText,
                     { 
-                      color: isSelected
-                        ? "#FFFFFF"
-                        : (colorScheme === "dark" ? tagColor.text : tagColor.text)
+                      color: isSelected ? "#FFFFFF" : tagColor.text
                     }
                   ]}>
                     {tag}
@@ -310,24 +344,19 @@ const SettingsScreen = memo(() => {
           title="피드백 보내기"
           subtitle="버그 리포트 및 개선 제안"
           icon="mail-outline"
-          onPress={() => {
-            // TODO: 피드백 모달 표시
-            console.log("피드백");
-          }}
+          onPress={() => setModalType("feedback")}
           showArrow={true}
         />
         <SettingItem
           title="개발자 정보"
           subtitle="JBSW NOW 개발팀"
           icon="people-outline"
-          onPress={() => {
-            // TODO: 개발자 정보 모달 표시
-            console.log("개발자 정보");
-          }}
+          onPress={() => setModalType("dev")}
           showArrow={true}
         />
       </ScrollView>
       </SafeAreaView>
+      {renderModal()}
     </PageTransition>
   );
 });
@@ -445,5 +474,58 @@ const styles = StyleSheet.create({
   tagChipText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 12,
+    color: "#111827",
+  },
+  modalText: {
+    fontSize: 14,
+    color: "#4B5563",
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  modalHighlight: {
+    fontSize: 14,
+    color: "#111827",
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  modalButton: {
+    marginTop: 12,
+    alignSelf: "flex-end",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "#6466E9",
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontWeight: "700",
   },
 });
