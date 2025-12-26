@@ -8,7 +8,7 @@ import { fetchNoticesCleaned } from "../../src/api/eventsFirestore";
 import { enrichEventsWithTags, TAG_COLORS } from "../../src/services/tags";
 import { searchByAllWords, normalize, extractHashtags, filterItemsByAllTags } from "../../src/services/search";
 import { useLocalSearchParams } from "expo-router";
-import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
+import { subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
 import { PageTransition } from "../../src/components/PageTransition";
 import { usePageTransition } from "../../src/hooks/usePageTransition";
 import Loading from "../../src/components/Loading";
@@ -69,7 +69,7 @@ const EventsScreen = memo(() => {
 
   // 즐겨찾기 변경 구독: 재조회 없이 카드 상태만 리렌더
   useEffect(() => {
-    ensureFavUser();
+    hydrateFavs();
     const unsub = subscribeFavorites(() => setFavTick((v) => v + 1));
     return () => unsub();
   }, []);

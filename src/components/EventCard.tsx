@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, useColorScheme, TouchableOpacity, Linking, Image, StyleSheet, Platform, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { isFavorite, subscribe, ensureUserId, toggleFavorite } from "../services/favorites";
+import { isFavorite, subscribe, toggleFavorite } from "../services/favorites";
 import { incrementHotClick } from "../services/hot";
 import { cleanCrawledText } from "../utils/textCleaner";
 import { Event } from "../types";
@@ -20,7 +20,6 @@ export const EventCard = ({ event, onPress }: Props) => {
   const bgColorAnim = React.useRef(new Animated.Value(0)).current;
   
   React.useEffect(() => {
-    ensureUserId();
     setFav(isFavorite(event.id));
     const unsub = subscribe(() => setFav(isFavorite(event.id)));
     return unsub;
