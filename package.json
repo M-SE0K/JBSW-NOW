@@ -11,6 +11,7 @@
     "android": "expo run:android",
     "setup": "node scripts/setup.mjs",
     "proxy": "node server/proxy.js",
+    "proxylocal": "node server/imageProxy.js",
     "ollama:pull": "node scripts/download-ollama-model.mjs",
     "export-data": "node scripts/export-firebase-data.mjs",
     "benchmark:chat": "node scripts/benchmark-chat.mjs",

@@ -37,9 +37,10 @@ function getProxyBaseUrl(): string {
   // 환경변수에서 가져오기 (우선순위)
   let baseUrl = (process.env.EXPO_PUBLIC_IMAGE_PROXY || process.env.IMAGE_PROXY || "").trim();
   
-  // 환경변수가 없으면 기본값 사용 (chat.ts와 동일한 패턴)
+  // 환경변수가 없으면 기본값 사용
+  // 앱 전용 이미지 프록시 서버 사용 (포트 4001)
   if (!baseUrl) {
-    baseUrl = "http://localhost:4000/proxy?url={url}";
+    baseUrl = "http://localhost:4001/proxy?url={url}";
   }
   
   return baseUrl;
@@ -80,11 +81,30 @@ export function maybeProxyForWeb(url?: string | null): string | undefined | null
       if (proxied) {
         if (__DEV__) {
           const envProxy = process.env.EXPO_PUBLIC_IMAGE_PROXY || process.env.IMAGE_PROXY || "(기본값 사용)";
+          console.log("[imageProxy] HTTP URL proxied:", {
+            original: url,
+            proxied,
+            envProxy,
+            platform: Platform.OS,
+          });
         }
         return proxied;
+      } else {
+        if (__DEV__) {
+          console.warn("[imageProxy] Failed to build proxy URL for:", url);
+        }
+        // 프록시 생성 실패 시 원본 URL 반환 (로드 실패할 수 있음)
+        return url;
       }
     }
-    // HTTPS는 그대로 사용
+    // HTTPS는 그대로 사용 (일부 경우 프록시가 필요할 수 있음)
+    if (__DEV__ && url.startsWith("https://")) {
+      console.log("[imageProxy] HTTPS URL used directly:", {
+        url,
+        platform: Platform.OS,
+        note: "HTTPS URLs are not proxied. If images fail to load, consider using a proxy.",
+      });
+    }
     return url;
   }
   // 웹 환경에서는 원본 URL 사용 (CORS는 브라우저가 처리)
