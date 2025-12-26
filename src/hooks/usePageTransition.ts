@@ -18,6 +18,16 @@ const TAB_INDEX_MAP: Record<string, number> = {
   "/hot": 4,
   "/hot/": 4,
   "/hot/index": 4,
+  "/settings": 5,
+  "/settings/": 5,
+  "/settings/index": 5,
+  "/search": 6,
+  "/search/": 6,
+  "/search/index": 6,
+  "/notification": 7,
+  "/notification/": 7,
+  "/notification/index": 7,
+  "/notification/settings": 8,
 };
 
 export const usePageTransition = () => {

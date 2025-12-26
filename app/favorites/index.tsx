@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, ActivityIndicator } from "react-native";
 import EventsList from "../../src/components/EventsList";
 import type { Event } from "../../src/types";
-import { ensureUserId, getFavorites as getFavIds, subscribe, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
+import { getFavorites as getFavIds, subscribe, hydrateFavorites as hydrateFavs } from "../../src/services/favorites";
 import { fetchNoticesCleaned, fetchRecentNewsWithinDays } from "../../src/api/eventsFirestore";
 import { enrichEventsWithTags } from "../../src/services/tags";
 import { PageTransition } from "../../src/components/PageTransition";
@@ -20,7 +20,7 @@ const FavoritesScreen = memo(() => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      await ensureUserId();
+      await hydrateFavs();
       const [notices, recentEvents] = await Promise.all([
         fetchNoticesCleaned(200),
         fetchRecentNewsWithinDays(90, 200),

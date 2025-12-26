@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import HotBannerSlider from "../HotBannerSlider";
 import QuickMenuGrid from "../QuickMenuGrid";
 import WebQuickMenu from "../WebQuickMenu";
-import { ensureUserId as ensureFavUser, subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
+import { subscribe as subscribeFavorites, hydrateFavorites as hydrateFavs } from "../../services/favorites";
 import { fetchRecentNews, fetchNoticesCleaned } from "../../api/eventsFirestore";
 import { enrichEventsWithTags, classifyEventTags } from "../../services/tags";
 import EventsList from "../EventsList";
@@ -81,9 +81,8 @@ export default function Home() {
 
   // 즐겨찾기 변경 구독: 재조회 없이 카드 상태만 리렌더
   useEffect(() => {
-    ensureFavUser();
     const unsub = subscribeFavorites(() => setFavTick((v) => v + 1));
-    // 화면 마운트 시 로컬 스토리지에서 즐겨찾기 상태 재하이드레이션
+    // 화면 마운트 시 Firestore에서 즐겨찾기 상태 로드
     (async () => {
       try {
         await hydrateFavs();
