@@ -49,16 +49,44 @@ jobs:
             echo "=========================================="
             echo "🧹 Cleaning up old resources..."
             echo "=========================================="
-            # 기존 컨테이너 중지 및 삭제
-            sudo docker rm -f frontend-server || true
-            sudo docker rm -f proxy-server || true
             
-            # 기존 이미지 삭제
-            sudo docker rmi my-frontend || true
-            sudo docker rmi my-proxy || true
+            # 기존 컨테이너 확인 및 강제 삭제
+            echo "Checking existing containers..."
+            if sudo docker ps -a --format '{{.Names}}' | grep -q '^frontend-server$'; then
+              echo "Stopping and removing frontend-server..."
+              sudo docker stop frontend-server 2>/dev/null || true
+              sudo docker rm -f frontend-server || true
+              echo "✅ frontend-server removed"
+            else
+              echo "ℹ️  frontend-server not found"
+            fi
+            
+            if sudo docker ps -a --format '{{.Names}}' | grep -q '^proxy-server$'; then
+              echo "Stopping and removing proxy-server..."
+              sudo docker stop proxy-server 2>/dev/null || true
+              sudo docker rm -f proxy-server || true
+              echo "✅ proxy-server removed"
+            else
+              echo "ℹ️  proxy-server not found"
+            fi
+            
+            # 기존 이미지 삭제 (실패해도 계속 진행)
+            echo "Removing old images..."
+            sudo docker rmi my-frontend 2>/dev/null || echo "ℹ️  my-frontend image not found"
+            sudo docker rmi my-proxy 2>/dev/null || echo "ℹ️  my-proxy image not found"
             
             # 미사용 이미지/캐시 정리
+            echo "Pruning unused resources..."
             sudo docker system prune -f
+            
+            # 삭제 확인
+            echo "Verifying cleanup..."
+            if sudo docker ps -a --format '{{.Names}}' | grep -E '^(frontend-server|proxy-server)$'; then
+              echo "⚠️  Warning: Some containers still exist, forcing removal..."
+              sudo docker rm -f frontend-server proxy-server 2>/dev/null || true
+            else
+              echo "✅ All containers cleaned up"
+            fi
             
             # ============================================
             # 1. Frontend Server 배포
