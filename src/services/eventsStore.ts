@@ -1,7 +1,9 @@
 import "../db/firebase";
-import { getFirestore, addDoc, collection, serverTimestamp } from "firebase/firestore";
-import type { ContestFromImage, GeminiAnalysisResult, Org } from "../types";
+import { getFirestore, addDoc, collection, serverTimestamp, getDoc, doc } from "firebase/firestore";
+import type { ContestFromImage, GeminiAnalysisResult, Org, Event } from "../types";
 import { cleanCrawledText } from "../utils/textCleaner";
+import { checkAndCreateNotificationsForNewEvent } from "./userNotifications";
+import { ALLOWED_TAGS, type AllowedTag } from "./tags";
 
 /**
  * Firestore 저장 전담 모듈(eventsStore)
@@ -76,7 +78,41 @@ export async function saveEventToFirestore(params: SaveEventParams): Promise<str
   } as const;
 
   const ref = await addDoc(collection(db, "events"), docData);
-  return ref.id;
+  const eventId = ref.id;
+
+  // 새 게시물 저장 후 관심 태그 매칭하여 알림 생성 (비동기, 블로킹 없음)
+  // 태그가 있고 AllowedTag 형식인 경우에만 알림 생성
+  const validTags = params.tags.filter((tag): tag is AllowedTag => 
+    ALLOWED_TAGS.includes(tag as AllowedTag)
+  );
+  
+  if (validTags.length > 0) {
+    // Event 객체 생성
+    const event: Event = {
+      id: eventId,
+      title,
+      postTitle: finalPostTitle,
+      summary,
+      startAt: startAt || new Date().toISOString(),
+      endAt: endAt || null,
+      location: ex?.location ?? null,
+      tags: validTags,
+      org: params.org,
+      sourceUrl: params.sourceUrl,
+      posterImageUrl: params.posterImageUrl ?? null,
+      ai: {
+        rawText: cleanedRaw,
+        extracted: ex ?? null,
+      },
+    };
+
+    // 알림 생성 (비동기, 에러는 로그만)
+    checkAndCreateNotificationsForNewEvent(event).catch((e) => {
+      console.warn("[EVENTS_STORE] Failed to create notifications for new event", e);
+    });
+  }
+
+  return eventId;
 }
 
 /**

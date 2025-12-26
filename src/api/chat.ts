@@ -119,7 +119,8 @@ ${ragContext}
         options: {
           temperature: 0.7,
           top_p: 0.9,
-          num_predict: 300, // 500 -> 300으로 줄여서 응답 시간 단축
+          // 답변이 잘리지 않도록 최대 토큰 상향
+          num_predict: 700, // 300 -> 700
         },
       },
       {

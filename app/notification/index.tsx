@@ -1,173 +1,239 @@
 // 알림 리스트 화면
-// - 저장된 로컬 알림(AsyncStorage의 localNotifications)을 읽어 요약 리스트로 표시
-// - 앱 내에서 알림이 생성되면 구독을 통해 즉시 반영
-// - 저장된 알림이 없을 때는 샘플 항목을 대신 렌더링하여 UI 구조를 확인할 수 있도록 함
+// - Firestore의 userNotifications 컬렉션에서 실시간으로 알림을 가져와 표시
+// - 관심 태그와 매칭된 게시물에 대한 알림을 스택 형식으로 표시
 import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, StyleSheet, Pressable, ScrollView, Animated } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Animated, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { getLocalNotifications, subscribeLocalNotifications, clearLocalNotifications, type LocalNotificationItem, markNotificationRead } from "../../src/services/notifications";
-import { testNotices } from "../../src/services/testNotices";
+import { 
+  getUserNotifications, 
+  subscribeUserNotifications, 
+  markNotificationRead,
+  markAllNotificationsRead,
+  type UserNotification 
+} from "../../src/services/userNotifications";
+import { getCurrentUser } from "../../src/services/auth";
+import { PageTransition } from "../../src/components/PageTransition";
+import { usePageTransition } from "../../src/hooks/usePageTransition";
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const [selectedNotifications, setSelectedNotifications] = useState<Set<number>>(new Set());
-  const [backgroundColors] = useState(() => 
-    Array.from({ length: 7 }, () => new Animated.Value(0))
-  );
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const { isVisible, direction } = usePageTransition();
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [readNotifications, setReadNotifications] = useState<Set<string>>(new Set());
 
-  const [items, setItems] = useState<LocalNotificationItem[]>([]);
+  const user = getCurrentUser();
 
-  // 샘플 데이터(스토리지 비어있을 때 UI 미리보기용)
-  const sampleItems: LocalNotificationItem[] = [
-    {
-      id: "sample-1",
-      title: "[공학대학] 2025년 하반기 해커톤 참가자 모집",
-      body: "교내 해커톤 참가자를 모집합니다. 팀 매칭 및 사전 교육 제공, 우수팀 시상.",
-      data: { url: "https://example.com/hackathon" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    },
-    {
-      id: "sample-2",
-      title: "[취업진로지원과] 현직자 멘토링 프로그램 안내",
-      body: "IT·SW 분야 현직자와의 1:1 멘토링. 신청 선착순 마감.",
-      data: null,
-      createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    },
-    {
-      id: "sample-3",
-      title: "[컴퓨터공학부] 알고리즘 스터디 모집(초급/중급)",
-      body: "백준 단계별/분류별 문제로 진행. 주 2회 오프라인 스터디.",
-      data: null,
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-  ];
-
-  // 초기 로드 + 저장소 변경 구독
+  // Firestore에서 알림 실시간 구독
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      // 테스트 데이터가 존재하면 테스트 데이터를 우선 사용
-      const data = (Array.isArray(testNotices) && testNotices.length > 0)
-        ? testNotices
-        : await getLocalNotifications();
-      if (mounted) {
-        setItems(data);
-        // 초기 상태: 모두 안읽음으로 리셋
-        setSelectedNotifications(new Set());
-        backgroundColors.forEach((v) => v.setValue(0));
-      }
-    })();
-    const unsub = subscribeLocalNotifications(async () => {
-      const data = (Array.isArray(testNotices) && testNotices.length > 0)
-        ? testNotices
-        : await getLocalNotifications();
-      setItems(data);
-      // 목록 갱신 시에도 안읽음 초기화 유지
-      setSelectedNotifications(new Set());
-      backgroundColors.forEach((v) => v.setValue(0));
-    });
-    return () => { mounted = false; unsub(); };
-  }, []);
-
-  const handleNotificationPress = (index: number) => {
-    const newSelected = new Set(selectedNotifications);
-    if (newSelected.has(index)) {
-      // 읽음 → 안읽음 전환 금지: 아무 동작도 하지 않음
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
       return;
-    } else {
-      // 안읽음 → 읽음 전환 허용
-      newSelected.add(index);
-      setSelectedNotifications(newSelected);
-      Animated.timing(backgroundColors[index], {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-      // 전역 읽음 상태 반영
-      const current = (items.length ? items : sampleItems)[index];
-      if (current?.id) {
-        markNotificationRead(current.id);
-      }
+    }
+
+    setLoading(true);
+    
+    // 초기 로드
+    getUserNotifications(user.uid, 100).then((notifs) => {
+      setNotifications(notifs);
+      setReadNotifications(new Set(notifs.filter(n => n.read).map(n => n.id)));
+      setLoading(false);
+    });
+
+    // 실시간 구독
+    const unsubscribe = subscribeUserNotifications(
+      user.uid,
+      (notifs) => {
+        setNotifications(notifs);
+        setReadNotifications(new Set(notifs.filter(n => n.read).map(n => n.id)));
+        setLoading(false);
+      },
+      100
+    );
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleNotificationPress = async (notification: UserNotification) => {
+    if (readNotifications.has(notification.id)) {
+      return; // 이미 읽음
+    }
+
+    // 읽음 표시
+    setReadNotifications(prev => new Set([...prev, notification.id]));
+    await markNotificationRead(notification.id);
+
+    // 이벤트 페이지로 이동 (있는 경우)
+    if (notification.eventUrl) {
+      // URL 열기 또는 이벤트 상세 페이지로 이동
+      // router.push(`/events/${notification.eventId}`);
     }
   };
 
+  const handleMarkAllRead = async () => {
+    if (!user) return;
+    await markAllNotificationsRead(user.uid);
+  };
+
+  const unreadCount = notifications.filter(n => !readNotifications.has(n.id)).length;
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Pressable 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#000" />
-          </Pressable>
-          {/* 설정 화면으로 이동(알림 설정 등 확장 가능) */}
-          <Pressable 
-            style={styles.settingsButton}
-            onPress={() => router.push("/notification/settings")}
-          >
-            <Ionicons name="settings-outline" size={24} color="#000" />
-          </Pressable>
-        </View>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>알림</Text>
-          <Ionicons name="chevron-down" size={20} color="#666" />
-        </View>
-      </View>
-
-      {/* 알림 목록 */}
-      <View style={styles.content}>
-        {/* 비어있을 때는 샘플 안내 문구 노출(필요 시 주석 해제) */}
-        {/* <View style={{ paddingHorizontal: 28, paddingTop: 10, paddingBottom: 6 }}>
-          <Text style={{ fontSize: 12, color: "#888" }}>
-            알림이 없어 샘플을 표시합니다.
-          </Text>
-        </View> */}
-
-        <ScrollView style={styles.scrollView}>
-          {(items.length ? items : sampleItems).map((n, index) => (
-            <Animated.View
-              key={index}
-              style={[
-                styles.notificationItem,
-                {
-                  backgroundColor: backgroundColors[index].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['#f5f5f5', '#ffffff'],
-                  }),
-                }
-              ]}
+    <PageTransition isVisible={isVisible} direction={direction}>
+      <SafeAreaView style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff" }]}>
+        {/* 헤더 */}
+        <View style={[styles.header, { backgroundColor: isDark ? "#000" : "#fff" }]}>
+          <View style={styles.headerTop}>
+            <Pressable 
+              style={styles.backButton}
+              onPress={() => router.back()}
             >
+              <Ionicons name="chevron-back" size={24} color={isDark ? "#fff" : "#000"} />
+            </Pressable>
+            <View style={styles.headerRight}>
+              {unreadCount > 0 && (
+                <Pressable 
+                  style={styles.markAllButton}
+                  onPress={handleMarkAllRead}
+                >
+                  <Text style={[styles.markAllText, { color: isDark ? "#94A3B8" : "#666" }]}>
+                    모두 읽음
+                  </Text>
+                </Pressable>
+              )}
               <Pressable 
-                style={styles.notificationPressable}
-                onPress={() => handleNotificationPress(index)}
+                style={styles.settingsButton}
+                onPress={() => router.push("/notification/settings")}
               >
-                {/* 제목/본문/수신 시각 요약 표시 */}
-                <Text style={styles.notificationTitle} numberOfLines={2}>{n.title}</Text>
-                {/* 본문은 알림 목록에서 렌더링하지 않음 */}
-                <Text style={styles.notificationMeta}>{new Date(n.createdAt).toLocaleString()}</Text>
+                <Ionicons name="settings-outline" size={24} color={isDark ? "#fff" : "#000"} />
               </Pressable>
-            </Animated.View>
-          ))}
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+            </View>
+          </View>
+          <View style={styles.titleContainer}>
+            <Text style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>알림</Text>
+            {unreadCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: "#EF4444" }]}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* 알림 목록 */}
+        <View style={[styles.content, { backgroundColor: isDark ? "#111827" : "#fff" }]}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={[styles.loadingText, { color: isDark ? "#94A3B8" : "#666" }]}>
+                불러오는 중...
+              </Text>
+            </View>
+          ) : notifications.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="notifications-off-outline" size={48} color={isDark ? "#475569" : "#9CA3AF"} />
+              <Text style={[styles.emptyText, { color: isDark ? "#94A3B8" : "#6B7280" }]}>
+                알림이 없습니다
+              </Text>
+              <Text style={[styles.emptySubtext, { color: isDark ? "#64748B" : "#9CA3AF" }]}>
+                관심 태그를 설정하면 관련 게시물 알림을 받을 수 있습니다
+              </Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.scrollView}>
+              {notifications.map((notification) => {
+                const isRead = readNotifications.has(notification.id);
+                return (
+                  <Pressable
+                    key={notification.id}
+                    style={[
+                      styles.notificationItem,
+                      {
+                        backgroundColor: isRead 
+                          ? (isDark ? "#1E293B" : "#F9FAFB")
+                          : (isDark ? "#334155" : "#FFFFFF"),
+                        borderLeftWidth: isRead ? 0 : 4,
+                        borderLeftColor: isRead ? "transparent" : "#6466E9",
+                      }
+                    ]}
+                    onPress={() => handleNotificationPress(notification)}
+                  >
+                    <View style={styles.notificationContent}>
+                      <View style={styles.notificationHeader}>
+                        <Text 
+                          style={[
+                            styles.notificationTitle, 
+                            { 
+                              color: isDark ? "#F1F5F9" : "#111827",
+                              fontWeight: isRead ? "500" : "700",
+                            }
+                          ]} 
+                          numberOfLines={2}
+                        >
+                          {notification.eventTitle}
+                        </Text>
+                        {!isRead && (
+                          <View style={[styles.unreadDot, { backgroundColor: "#6466E9" }]} />
+                        )}
+                      </View>
+                      
+                      {notification.matchedTags.length > 0 && (
+                        <View style={styles.tagsContainer}>
+                          {notification.matchedTags.slice(0, 3).map((tag) => (
+                            <View 
+                              key={tag} 
+                              style={[
+                                styles.tagBadge,
+                                { backgroundColor: isDark ? "rgba(100, 102, 233, 0.2)" : "#EDE9FE" }
+                              ]}
+                            >
+                              <Text style={[styles.tagText, { color: isDark ? "#A78BFA" : "#7C3AED" }]}>
+                                #{tag}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                      
+                      <Text style={[styles.notificationMeta, { color: isDark ? "#94A3B8" : "#6B7280" }]}>
+                        {formatNotificationTime(notification.createdAt)}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      </SafeAreaView>
+    </PageTransition>
   );
+}
+
+function formatNotificationTime(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (minutes < 1) return "방금 전";
+  if (minutes < 60) return `${minutes}분 전`;
+  if (hours < 24) return `${hours}시간 전`;
+  if (days < 7) return `${days}일 전`;
+  return date.toLocaleDateString("ko-KR");
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   header: {
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 12,
-    backgroundColor: "#fff",
   },
   headerTop: {
     flexDirection: "row",
@@ -178,6 +244,18 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 4,
   },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  markAllButton: {
+    padding: 4,
+  },
+  markAllText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
   settingsButton: {
     padding: 4,
   },
@@ -185,54 +263,104 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginLeft: 12,
+    gap: 8,
   },
   title: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#000",
-    marginRight: 4,
+  },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
   },
   content: {
     flex: 1,
-    backgroundColor: "#fff",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     marginTop: 8,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+  },
   scrollView: {
     flex: 1,
-    paddingTop: 0,
   },
   notificationItem: {
-    marginHorizontal: 0,
-    paddingHorizontal: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-    backgroundColor: "#f5f5f5",
+    borderBottomColor: "rgba(0,0,0,0.05)",
   },
-  notificationPressable: {
-    paddingVertical: 24,
-    paddingHorizontal: 0,
+  notificationContent: {
+    flex: 1,
   },
-  notificationText: {
-    fontSize: 16,
-    color: "#000",
-    lineHeight: 24,
+  notificationHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
   notificationTitle: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#111",
+    lineHeight: 22,
+    flex: 1,
+    marginRight: 8,
   },
-  notificationBody: {
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     marginTop: 6,
-    fontSize: 14,
-    color: "#444",
-    lineHeight: 20,
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 8,
+  },
+  tagBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   notificationMeta: {
-    marginTop: 6,
     fontSize: 12,
-    color: "#888",
   },
 });
