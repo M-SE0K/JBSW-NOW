@@ -18,7 +18,8 @@
     "benchmark:compare": "node scripts/benchmark-compare-models.mjs",
     "check:system": "node scripts/check-system.mjs",
     "check:gpu": "node scripts/check-gpu-mode.mjs",
-    "test:gpu": "node scripts/test-gpu-mode.mjs"
+    "test:gpu": "node scripts/test-gpu-mode.mjs",
+    "test:notifications": "node scripts/test-notifications.mjs"
   },
   "keywords": [],
   "author": "",
