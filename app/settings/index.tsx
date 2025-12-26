@@ -5,7 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ensureUserId, getActiveUserIdSync, hydrateFavorites, clearFavorites } from "../../src/services/favorites";
+import { hydrateFavorites, clearFavorites } from "../../src/services/favorites";
+import { getCurrentUser } from "../../src/services/auth";
 import { subscribeAuth, logout, getCurrentUser } from "../../src/services/auth";
 import { User } from "firebase/auth";
 
@@ -198,11 +199,12 @@ export default function SettingsScreen() {
               console.log("[SETTINGS] cleared recent searches", { before: recentBefore.length, after: 0, items: recentBefore });
 
               // 즐겨찾기 삭제(현재 사용자)
-              await ensureUserId();
-              const uid = getActiveUserIdSync();
-              await clearFavorites();
+              const user = getCurrentUser();
+              if (user) {
+                await clearFavorites();
                 await hydrateFavorites();
-              console.log("[SETTINGS] cleared favorites", { userId: uid });
+                console.log("[SETTINGS] cleared favorites", { userId: user.uid });
+              }
               showAlert("완료", "캐시 데이터가 삭제되었습니다.");
             } catch (e) {
               console.warn("[SETTINGS] clear cache error", e);
